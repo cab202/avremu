@@ -1,27 +1,47 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
 use std::rc::Rc;
 
 pub trait MemoryMapped {
     fn get_size(&self) -> usize;
     fn read(&self, address: usize) -> (u8, usize);
-    fn read_word(&self, address: usize) -> (u16, usize);
     fn write(&mut self, address: usize, value: u8) -> usize;
-    fn write_word(&mut self, address: usize, value: u16) -> usize;
+    fn read_word(&self, address: usize) -> (u16, usize) {
+        let (bl, ll) =  self.read(address);
+        let (bh, lh) =  self.read(address+1);
+        (((bh as u16) << 8) | (bl as u16), ll+lh)
+    }
+    fn write_word(&mut self, address: usize, value: u16) -> usize {
+        let bl =  value as u8;
+        let bh =  (value >> 8) as u8;
+        self.write(address, bl) + self.write(address, bh)
+    }
 }
 
 pub struct MemoryMap {
-    size: usize,
-    mm: Vec<Rc<RefCell<dyn MemoryMapped>>>
-
+    mm: Vec<(usize, Rc<RefCell<dyn MemoryMapped>>)>
 }
 
 impl MemoryMap {
-    pub fn new(size: usize) -> Self {
-        MemoryMap { size, mm: Vec::new() }
+    pub fn new() -> Self {
+        MemoryMap { mm: Vec::new() }
     }
 
     pub fn add(&mut self, offset: usize, dev: Rc<RefCell<dyn MemoryMapped>>) {
-        self.mm.push(dev);
+        self.mm.push((offset, dev));
+    }
+
+    fn get_dev(&self, address: usize) -> (RefMut<dyn MemoryMapped>, usize)  {
+        let idx = self.mm.binary_search_by(|dev| {
+            if address < dev.0 {
+                Ordering::Greater
+            } else if address >= dev.0+dev.1.borrow().get_size() {
+                Ordering::Less
+            } else {
+                Ordering::Equal
+            }
+        }).expect("Attempt to access undefined region of memory map.");
+        (self.mm[idx].1.borrow_mut(), address-self.mm[idx].0)
     }
 }
 
@@ -31,19 +51,13 @@ impl MemoryMapped for MemoryMap {
     }
 
     fn read(&self, address: usize) -> (u8, usize) {
-        (0, 0)  //TODO
-    }
-
-    fn read_word(&self, address: usize) -> (u16, usize) {
-        (0, 0) //TODO
+        let (dev, offset) = self.get_dev(address);
+        dev.read(offset)
     }
 
     fn write(&mut self, address: usize, value: u8) -> usize {
-        0 //TODO
-    }
-
-    fn write_word(&mut self, address: usize, value: u16) -> usize {
-        0 //TODO
+        let (mut dev, offset) = self.get_dev(address);
+        dev.write(offset, value)
     }
 }
 
@@ -72,20 +86,8 @@ impl MemoryMapped for Memory {
         (self.mem[address], self.lat)
     }
 
-    fn read_word(&self, address: usize) -> (u16, usize) {
-        let mut word = (self.mem[address+1] as u16) << 8;
-        word |= self.mem[address] as u16;
-        (word, self.lat)
-    }
-
     fn write(&mut self, address: usize, value: u8) -> usize {
         self.mem[address] = value;
-        0
-    }
-
-    fn write_word(&mut self, address: usize, value: u16) -> usize {
-        self.mem[address] = value as u8;
-        self.mem[address+1] = (value >> 8) as u8;
         0
     }
 }

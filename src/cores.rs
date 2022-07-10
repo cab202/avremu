@@ -5,6 +5,7 @@ use super::memory::MemoryMapped;
 
 use bitmatch::bitmatch;
 
+#[allow(dead_code)]
 pub enum CoreType {
     AVR,
     AVRe,
@@ -14,14 +15,15 @@ pub enum CoreType {
     AVRrc
 }
 
+#[allow(dead_code)]
 pub struct Core {
     variant: CoreType,
     regs:  [u8; 32],
     sreg: u8,
     pc: u16,
     sp: u16,
-    ds: Rc<RefCell<dyn MemoryMapped>>,
-    progmem: Rc<RefCell<dyn MemoryMapped>>,
+    pub ds: Rc<RefCell<dyn MemoryMapped>>,
+    pub progmem: Rc<RefCell<dyn MemoryMapped>>,
     busy: u8
 }
 
@@ -39,11 +41,11 @@ impl Core {
         }
     }
 
-    fn get_r(&self, r: u8) -> u8 {
+    pub fn get_r(&self, r: u8) -> u8 {
         self.regs[usize::from(r)]
     }
     
-    fn set_r(&mut self, r: u8, val: u8) {
+    pub fn set_r(&mut self, r: u8, val: u8) {
         self.regs[usize::from(r)] = val;
     }
 
@@ -72,7 +74,7 @@ impl Core {
     }
 
     fn spm(&mut self, address: u16, val: u16) {
-        self.progmem.borrow_mut().write_word(usize::from(address), val);
+        self.progmem.borrow_mut().write_word(usize::from(address)<<1, val);
     }
 
     #[allow(non_snake_case)]
@@ -386,7 +388,76 @@ impl Core {
         } 
     }
 
-    fn tick(&mut self) -> bool {
+    fn call(&mut self, address: u32) {
+        let mut ds = self.ds.borrow_mut();
+        ds.write(usize::from(self.sp), (self.pc+1) as u8); self.sp -= 1;
+        ds.write(usize::from(self.sp), ((self.pc+1)>>8) as u8); self.sp -= 1;
+        self.pc = address as u16;
+    }
+
+    #[allow(non_snake_case)]
+    fn cp(&mut self, Rd: u8, Rr: u8) {
+        // Rd - Rr
+        let mut rd = self.get_r(Rd); 
+        let rr = self.get_r(Rr); 
+        let c: bool;
+
+        (rd, c) = rd.overflowing_sub(rr);
+
+        self.set_sreg_bit(BitSREG::C, c)
+    }
+
+    #[allow(non_snake_case)]
+    fn cpc(&mut self, Rd: u8, Rr: u8) {
+        // Rd - Rr - C
+        let mut rd = self.get_r(Rd); 
+        let rr = self.get_r(Rr); 
+        let mut c = self.get_sreg_bit(BitSREG::C);
+
+        if c {
+            (rd, c) = rd.overflowing_sub(1);
+            if c {
+                // We overflowed so cant overflow again
+                rd -= rr;
+            } else {
+                // We could still overflow
+                (rd, c) = rd.overflowing_sub(rr);
+            }
+        } else {
+            // Carry bit is not set, normal overflowing sub
+            (rd, c) = rd.overflowing_sub(rr);
+        }
+
+        self.set_sreg_bit(BitSREG::C, c);
+    }
+
+    #[allow(non_snake_case)]
+    fn cpi(&mut self, Rd: u8, val: u8) {
+        // Rd - val
+        let mut rd = self.get_r(Rd); 
+        let c: bool;
+
+        (rd, c) = rd.overflowing_sub(val);
+
+        self.set_sreg_bit(BitSREG::C, c)
+    }
+
+    fn cpse(&mut self, Rd: u8, Rr: u8) -> u8 {
+        use Instruction::*;
+
+        if Rd == Rr {
+            let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
+            let op = Instruction::decode(opcode);
+            match op {
+                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
+                _ => {self.pc += 1; 1},
+            }
+        } else {
+            0
+        }
+    }
+
+    pub fn tick(&mut self) -> bool {
         use Instruction::*; 
 
         let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
@@ -428,12 +499,12 @@ impl Core {
             SUBI    {Rd, val}   => {self.subi(Rd, val)},
             //Flow
             BRBC    {offset, bit}   => {self.busy = self.brbx(bit, offset, false)},
-            BRBS    {offset, bit}   => {self.busy = self.brbx(bit, offset, false)},
-            CALL    {address}          => {},
-            CP      { Rd, Rr }      => {},
-            CPC     { Rd, Rr }      => {},
-            CPI     { Rd, val }     => {},
-            CPSE    { Rd, Rr }      => {},
+            BRBS    {offset, bit}   => {self.busy = self.brbx(bit, offset, true)},
+            CALL    {address}          => {self.call(address); self.busy = 2},
+            CP      { Rd, Rr }      => {self.cp(Rd, Rr)},
+            CPC     { Rd, Rr }      => {self.cpc(Rd, Rr)},
+            CPI     { Rd, val }     => {self.cpi(Rd, val)},
+            CPSE    { Rd, Rr }      => {self.busy  = self.cpse(Rd, Rr)},
             ICALL                           => {},
             IJMP                            => {},
             JMP { address }            => {},
