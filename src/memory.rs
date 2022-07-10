@@ -14,7 +14,7 @@ pub trait MemoryMapped {
     fn write_word(&mut self, address: usize, value: u16) -> usize {
         let bl =  value as u8;
         let bh =  (value >> 8) as u8;
-        self.write(address, bl) + self.write(address, bh)
+        self.write(address, bl) + self.write(address+1, bh)
     }
 }
 

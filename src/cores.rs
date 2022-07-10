@@ -61,6 +61,22 @@ impl Core {
         self.regs[rl+1] = bytes[1];
     }
 
+    fn get_ior(&self, ioreg: u8) -> u8 {
+        self.ds.borrow().read(usize::from(ioreg)).0
+    }
+
+    fn set_ior(&mut self, ioreg: u8, val: u8) {
+        self.ds.borrow_mut().write(usize::from(ioreg), val);
+    }
+
+    fn get_ds(&self, address: u32) -> u8 {
+        self.ds.borrow().read(usize::try_from(address).unwrap()).0
+    }
+
+    fn set_ds(&mut self, address: u32, val: u8) {
+        self.ds.borrow_mut().write(usize::try_from(address).unwrap(), val);
+    }
+
     fn get_sreg_bit(&self, bit: BitSREG) -> bool {
         (self.sreg & (1<<bit as u8)) != 0
     }
@@ -71,10 +87,6 @@ impl Core {
         } else {
             self.sreg &= !(1<<bit as u8);
         }
-    }
-
-    fn spm(&mut self, address: u16, val: u16) {
-        self.progmem.borrow_mut().write_word(usize::from(address)<<1, val);
     }
 
     #[allow(non_snake_case)]
@@ -396,6 +408,7 @@ impl Core {
     }
 
     #[allow(non_snake_case)]
+    #[allow(unused_assignments)]
     fn cp(&mut self, Rd: u8, Rr: u8) {
         // Rd - Rr
         let mut rd = self.get_r(Rd); 
@@ -408,6 +421,7 @@ impl Core {
     }
 
     #[allow(non_snake_case)]
+    #[allow(unused_assignments)]
     fn cpc(&mut self, Rd: u8, Rr: u8) {
         // Rd - Rr - C
         let mut rd = self.get_r(Rd); 
@@ -432,6 +446,7 @@ impl Core {
     }
 
     #[allow(non_snake_case)]
+    #[allow(unused_assignments)]
     fn cpi(&mut self, Rd: u8, val: u8) {
         // Rd - val
         let mut rd = self.get_r(Rd); 
@@ -442,6 +457,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    #[allow(non_snake_case)]
     fn cpse(&mut self, Rd: u8, Rr: u8) -> u8 {
         use Instruction::*;
 
@@ -450,11 +466,156 @@ impl Core {
             let op = Instruction::decode(opcode);
             match op {
                 CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
-                _ => {self.pc += 1; 1},
+                _ => {self.pc += 1; 1}
             }
         } else {
             0
         }
+    }
+
+    fn icall(&mut self) {
+        let mut ds = self.ds.borrow_mut();
+        ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
+        ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
+        self.pc = self.get_rw(30);
+    }
+
+    fn ijmp(&mut self) {
+        self.pc = self.get_rw(30);
+    }
+
+    fn jmp(&mut self, address: u32) {
+        self.pc = address as u16;
+    }
+
+    fn rcall(&mut self, offset: i16) {
+        let mut ds = self.ds.borrow_mut();
+        ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
+        ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
+        (self.pc, _) = self.pc.overflowing_add(offset as u16);
+    }
+
+    fn ret(&mut self) {
+        let ds = self.ds.borrow();
+        self.sp += 1; let (bh, _) = ds.read(usize::from(self.sp)); 
+        self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
+        self.pc = ((bh as u16) << 8) | (bl as u16);
+    }
+
+    fn reti(&mut self) {
+        let ds = self.ds.borrow();
+        self.sp += 1; let (bh, _) = ds.read(usize::from(self.sp)); 
+        self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
+        self.pc = ((bh as u16) << 8) | (bl as u16);
+
+        //I bit in SREG not set for AVRxt 
+    }
+
+    fn rjmp(&mut self, offset: i16) {
+        (self.pc, _) = self.pc.overflowing_add(offset as u16);
+    }
+
+    #[allow(non_snake_case)]
+    fn sbix(&mut self, ioreg: u8, bit: u8, set: bool) -> u8 {
+        use Instruction::*;
+        
+        let bitval_n = (self.ds.borrow().read(usize::from(ioreg)).0 & (1<<bit)) == 0;
+
+        if set ^ bitval_n {
+            let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
+            let op = Instruction::decode(opcode);
+            match op {
+                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
+                _ => {self.pc += 1; 1},
+            }
+        } else {
+            0
+        } 
+    }
+
+    #[allow(non_snake_case)]
+    fn sbrx(&mut self, Rr: u8, bit: u8, set: bool) -> u8 {
+        use Instruction::*;
+        
+        let bitval_n = (self.get_r(Rr) & (1<<bit)) == 0;
+
+        if set ^ bitval_n {
+            let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
+            let op = Instruction::decode(opcode);
+            match op {
+                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
+                _ => {self.pc += 1; 1},
+            }
+        } else {
+            0
+        } 
+    }
+
+    #[allow(non_snake_case)]
+    fn asr(&mut self, Rd: u8) {
+        self.set_r(Rd, ((self.get_r(Rd) as i8) >> 1) as u8);  
+    }
+    
+    fn bclr(&mut self, bit: u8) {
+        self.set_sreg_bit(BitSREG::from(bit), false);
+    }
+    
+    #[allow(non_snake_case)]
+    fn bld(&mut self, Rd: u8, bit: u8) {
+        if self.get_sreg_bit(BitSREG::T) {
+            self.set_r(Rd, self.get_r(Rd) | (1 << bit));
+        } else {
+            self.set_r(Rd, self.get_r(Rd) & !(1 << bit));
+        }
+    }
+    
+    fn bset(&mut self, bit: u8) {
+        self.set_sreg_bit(BitSREG::from(bit), true)
+    }
+    
+    #[allow(non_snake_case)]
+    fn bst(&mut self, Rd: u8, bit: u8) {
+        self.set_sreg_bit(BitSREG::T, (self.get_r(Rd) & (1 << bit)) != 0);
+    }
+    
+    fn cbi(&mut self, ioreg: u8, bit: u8) {
+        let val = self.ds.borrow().read(usize::from(ioreg)).0;
+        self.ds.borrow_mut().write(usize::from(ioreg), val & !(1 << bit));
+    }
+    
+    #[allow(non_snake_case)]
+    fn lsl(&mut self, Rd: u8) {
+        self.set_r(Rd, self.get_r(Rd) << 1);  
+    }
+    
+    #[allow(non_snake_case)]
+    fn lsr(&mut self, Rd: u8) {
+        self.set_r(Rd, self.get_r(Rd) >> 1);  
+    }
+    
+    #[allow(non_snake_case)]
+    fn rol(&mut self, Rd: u8) {
+        self.set_r(Rd, self.get_r(Rd).rotate_left(1));       
+    }
+    
+    #[allow(non_snake_case)]
+    fn ror(&mut self, Rd: u8) {
+        self.set_r(Rd, self.get_r(Rd).rotate_right(1));
+    }
+    
+    fn sbi(&mut self, ioreg: u8, bit: u8) {
+        let val = self.ds.borrow().read(usize::from(ioreg)).0;
+        self.ds.borrow_mut().write(usize::from(ioreg), val | (1 << bit));
+    }
+
+    #[allow(non_snake_case)]
+    fn swap(&mut self, Rd: u8) {
+        self.set_r(Rd, self.get_r(Rd).rotate_left(4));
+    }
+
+    #[allow(non_snake_case)]
+    fn iin(&mut self, Rd: u8, ioreg: u8) {
+        self.set_r(Rd, self.get_ior(ioreg));
     }
 
     pub fn tick(&mut self) -> bool {
@@ -505,19 +666,62 @@ impl Core {
             CPC     { Rd, Rr }      => {self.cpc(Rd, Rr)},
             CPI     { Rd, val }     => {self.cpi(Rd, val)},
             CPSE    { Rd, Rr }      => {self.busy  = self.cpse(Rd, Rr)},
-            ICALL                           => {},
-            IJMP                            => {},
-            JMP { address }            => {},
-            RCALL { offset }           => {},
-            RET                             => {},
-            RETI                            => {},
-            RJMP { offset }            => {},
-            SBIC { ioreg, bit }     => {},
-            SBIS { ioreg, bit }     => {},
-            SBRC { Rr, bit }        => {},
-            SBRS { Rr, bit }        => {},
-
-            
+            ICALL                           => {self.icall(); self.busy = 1},
+            IJMP                            => {self.ijmp(); self.busy = 1},
+            JMP     { address }        => {self.jmp(address); self.busy = 2},
+            RCALL   { offset }         => {self.rcall(offset); self.busy = 1},
+            RET                             => {self.ret(); self.busy = 3},
+            RETI                            => {self.reti(); self.busy = 3},
+            RJMP    { offset }         => {self.rjmp(offset); self.busy = 1},
+            SBIC    { ioreg, bit }  => {self.busy = self.sbix(ioreg, bit, false)},
+            SBIS    { ioreg, bit }  => {self.busy = self.sbix(ioreg, bit, true)},
+            SBRC    { Rr, bit }     => {self.busy = self.sbrx(Rr, bit, false)},
+            SBRS    { Rr, bit }     => {self.busy = self.sbrx(Rr, bit, true)},
+            //Bit
+            ASR     { Rd }              => {self.asr(Rd)},
+            BCLR    { bit }             => {self.bclr(bit)},
+            BLD     { Rd, bit }     => {self.bld(Rd, bit)},
+            BSET    { bit }             => {self.bset(bit)},
+            BST     { Rd, bit }     => {self.bst(Rd, bit)},
+            CBI     { ioreg, bit }  => {self.cbi(ioreg, bit)},
+            LSL     { Rd }              => {self.lsl(Rd)},
+            LSR     { Rd }              => {self.lsr(Rd)},
+            ROL     { Rd }              => {self.rol(Rd)},
+            ROR     { Rd }              => {self.ror(Rd)},
+            SBI     { ioreg, bit}   => {self.sbi(ioreg, bit)},
+            SWAP    { Rd }              => {self.swap(Rd)},
+            //Data transfer
+            IN          { Rd, ioreg }       => {self.iin(Rd, ioreg)},
+            LDX         { Rd }                  => {},
+            LDXdec      { Rd }                  => {},
+            LDXinc      { Rd }                  => {},
+            LDYdec      { Rd }                  => {},
+            LDYinc      { Rd }                  => {},
+            LDZdec      { Rd }                  => {},
+            LDZinc      { Rd }                  => {},
+            LDDY        { Rd, offset }      => {},
+            LDDZ        { Rd, offset}       => {},
+            LDI         { Rd, val }         => {},
+            LDS         { Rd, address }    => {},
+            LPM                                     => {},
+            LPMRdZ      { Rd }                  => {},
+            LPMRdZinc   { Rd }                  => {},
+            MOV         { Rd, Rr }          => {},
+            MOVW        { Rd, Rr }          => {},
+            OUT         { Rr, ioreg }       => {},
+            POP         { Rd }                  => {},
+            PUSH        { Rr }                  => {},
+            STX         { Rr }                  => {},
+            STXdec      { Rr }                  => {},
+            STXinc      { Rr }                  => {},
+            STYdec      { Rr }                  => {},
+            STYinc      { Rr }                  => {},
+            STZdec      { Rr }                  => {},
+            STZinc      { Rr }                  => {},
+            STDY        { Rr, offset }      => {},
+            STDZ        { Rr, offset }      => {},
+            STS         { Rr, address }    => {},
+            //Undefined
             UNDEF   => { panic!("[0x{:04X}] Undefined opcode: {:b}", self.pc, opcode) },
             _       => { panic!("Unhandled instruction!") }
         }

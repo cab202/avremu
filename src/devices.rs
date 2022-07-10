@@ -41,7 +41,7 @@ impl Device {
         }
     }
 
-    pub fn loadTestProgramme(&mut self) {
+    pub fn load_test_programme(&mut self) {
         self.core.set_r(24, 0xFF);
         self.core.set_r(25, 0x01);
 
