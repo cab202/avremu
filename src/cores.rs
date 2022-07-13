@@ -98,6 +98,9 @@ impl Core {
         }
     }
 
+    // ARITHMETIC INSTRUCTIONS
+
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn adc(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd + Rr + C
@@ -124,6 +127,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn add(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd + Rr
@@ -138,6 +142,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn adiw(&mut self, Rd: u8, val: u8) {
         // R[d+1]:Rd <- R[d+1]:Rd + val
@@ -152,6 +157,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn andi(&mut self, Rd: u8, val: u8) {
         let mut r = self.get_r(Rd);
@@ -159,6 +165,7 @@ impl Core {
         self.set_r(Rd, r);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn com(&mut self, Rd: u8) {
         let mut r = self.get_r(Rd);
@@ -166,6 +173,7 @@ impl Core {
         self.set_r(Rd, r);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn dec(&mut self, Rd: u8) {
         // Rd <= Rd - 1; (Carry bit unchanged)
@@ -174,6 +182,7 @@ impl Core {
         self.set_r(Rd, r);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn eor(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd xor Rr
@@ -185,6 +194,7 @@ impl Core {
         self.set_r(Rd, rd);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn fmul(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (unsigned) <= Rd (unsigned) x Rr (unsigned) << 1
@@ -202,6 +212,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::Z, word == 0);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn fmuls(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (signed) << 1
@@ -219,6 +230,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::Z, word == 0);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn fmulsu(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (unsigned) << 1
@@ -236,6 +248,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::Z, word == 0);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn inc(&mut self, Rd: u8) {
         // Rd <= Rd + 1; (Carry bit unchanged)
@@ -244,6 +257,7 @@ impl Core {
         self.set_r(Rd, r);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn mul(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (unsigned) <= Rd (unsigned) x Rr (unsigned)
@@ -260,6 +274,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::Z, word == 0);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn muls(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (signed)
@@ -276,6 +291,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::Z, word == 0);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn mulsu(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (unsigned)
@@ -292,6 +308,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::Z, word == 0);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn neg(&mut self, Rd: u8) {
         // Rd <= ~Rd + 1 (i.e twos-complement)
@@ -301,6 +318,7 @@ impl Core {
         self.set_r(Rd, r);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn or(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd or Rr
@@ -312,6 +330,7 @@ impl Core {
         self.set_r(Rd, rd);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn ori(&mut self, Rd: u8, val: u8) {
         // Rd <- Rd or val
@@ -322,6 +341,7 @@ impl Core {
         self.set_r(Rd, rd);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn sbc(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd - Rr - C
@@ -348,6 +368,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn sbci(&mut self, Rd: u8, val: u8) {
         // Rd <- Rd - val - C
@@ -373,6 +394,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn sbiw(&mut self, Rd: u8, val: u8) {
         // R[d+1]:Rd <- R[d+1]:Rd - val
@@ -387,6 +409,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn sub(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd - Rr
@@ -401,6 +424,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn subi(&mut self, Rd: u8, val: u8) {
         // Rd <- Rd + Rr
@@ -414,6 +438,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    // FLOW CONTROL INSTRUCTIONS
     fn brbx(&mut self, bit: u8, offset: i8, set: bool) {
         if !set ^ self.get_sreg_bit(BitSREG::from(bit)) {
             let mut pc = self.pc as i32;
@@ -432,6 +457,7 @@ impl Core {
         self.pc = address as u16;
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     #[allow(unused_assignments)]
     fn cp(&mut self, Rd: u8, Rr: u8) {
@@ -445,6 +471,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     #[allow(unused_assignments)]
     fn cpc(&mut self, Rd: u8, Rr: u8) {
@@ -470,6 +497,7 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c);
     }
 
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     #[allow(unused_assignments)]
     fn cpi(&mut self, Rd: u8, val: u8) {
@@ -584,6 +612,9 @@ impl Core {
         } 
     }
 
+    // BIT MANIPULATION INSTRUCTIONS
+
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn asr(&mut self, Rd: u8) {
         self.set_r(Rd, ((self.get_r(Rd) as i8) >> 1) as u8);  
@@ -616,21 +647,25 @@ impl Core {
         self.ds.borrow_mut().write(usize::from(ioreg), val & !(1 << bit));
     }
     
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn lsl(&mut self, Rd: u8) {
         self.set_r(Rd, self.get_r(Rd) << 1);  
     }
     
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn lsr(&mut self, Rd: u8) {
         self.set_r(Rd, self.get_r(Rd) >> 1);  
     }
     
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn rol(&mut self, Rd: u8) {
         self.set_r(Rd, self.get_r(Rd).rotate_left(1));       
     }
     
+    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn ror(&mut self, Rd: u8) {
         self.set_r(Rd, self.get_r(Rd).rotate_right(1));
