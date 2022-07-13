@@ -77,6 +77,15 @@ impl Core {
         self.ds.borrow_mut().write(usize::try_from(address).unwrap(), val);
     }
 
+    fn get_ps(&self, address: u32) -> u8 {
+        self.progmem.borrow().read(usize::try_from(address).unwrap()).0
+    }
+
+    #[allow(dead_code)]
+    fn set_ps(&mut self, address: u32, val: u8) {
+        self.progmem.borrow_mut().write(usize::try_from(address).unwrap(), val);
+    }
+
     fn get_sreg_bit(&self, bit: BitSREG) -> bool {
         (self.sreg & (1<<bit as u8)) != 0
     }
@@ -132,6 +141,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn adiw(&mut self, Rd: u8, val: u8) {
         // R[d+1]:Rd <- R[d+1]:Rd + val
+        self.busy = 1;
+
         let mut word = self.get_rw(Rd);
         let c: bool;
         (word, c) = word.overflowing_add(u16::from(val));
@@ -177,6 +188,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn fmul(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (unsigned) <= Rd (unsigned) x Rr (unsigned) << 1
+        self.busy = 1;
+        
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
@@ -192,6 +205,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn fmuls(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (signed) << 1
+        self.busy = 1;
+
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
@@ -207,6 +222,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn fmulsu(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (unsigned) << 1
+        self.busy = 1;
+
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
@@ -230,6 +247,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn mul(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (unsigned) <= Rd (unsigned) x Rr (unsigned)
+        self.busy = 1;
+
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
@@ -244,6 +263,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn muls(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (signed)
+        self.busy = 1;
+
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
@@ -258,6 +279,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn mulsu(&mut self, Rd: u8, Rr: u8) {
         // R1:R0 (signed) <= Rd (signed) x Rr (unsigned)
+        self.busy = 1;
+
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
@@ -353,6 +376,8 @@ impl Core {
     #[allow(non_snake_case)]
     fn sbiw(&mut self, Rd: u8, val: u8) {
         // R[d+1]:Rd <- R[d+1]:Rd - val
+        self.busy = 1;
+
         let mut word = self.get_rw(Rd);
         let c: bool;
         (word, c) = word.overflowing_sub(u16::from(val));
@@ -389,18 +414,18 @@ impl Core {
         self.set_sreg_bit(BitSREG::C, c)
     }
 
-    fn brbx(&mut self, bit: u8, offset: i8, set: bool) -> u8 {
+    fn brbx(&mut self, bit: u8, offset: i8, set: bool) {
         if !set ^ self.get_sreg_bit(BitSREG::from(bit)) {
             let mut pc = self.pc as i32;
             pc += i32::from(offset);
             self.pc = pc as u16;
-            return 1;
-        } else {
-            return 0;
-        } 
+            self.busy = 1;
+        }
     }
 
     fn call(&mut self, address: u32) {
+        self.busy = 2; // AVRxt, 16-bit PC
+
         let mut ds = self.ds.borrow_mut();
         ds.write(usize::from(self.sp), (self.pc+1) as u8); self.sp -= 1;
         ds.write(usize::from(self.sp), ((self.pc+1)>>8) as u8); self.sp -= 1;
@@ -458,22 +483,22 @@ impl Core {
     }
 
     #[allow(non_snake_case)]
-    fn cpse(&mut self, Rd: u8, Rr: u8) -> u8 {
+    fn cpse(&mut self, Rd: u8, Rr: u8) {
         use Instruction::*;
 
         if Rd == Rr {
             let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
             let op = Instruction::decode(opcode);
             match op {
-                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
-                _ => {self.pc += 1; 1}
+                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; self.busy = 2},
+                _ => {self.pc += 1; self.busy = 1}
             }
-        } else {
-            0
         }
     }
 
     fn icall(&mut self) {
+        self.busy = 1; // AVRxt, 16-bit PC
+
         let mut ds = self.ds.borrow_mut();
         ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
         ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
@@ -481,14 +506,20 @@ impl Core {
     }
 
     fn ijmp(&mut self) {
+        self.busy = 1;
+
         self.pc = self.get_rw(30);
     }
 
     fn jmp(&mut self, address: u32) {
+        self.busy = 2;
+
         self.pc = address as u16;
     }
 
     fn rcall(&mut self, offset: i16) {
+        self.busy = 1; // AVRxt, 16-bit PC
+
         let mut ds = self.ds.borrow_mut();
         ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
         ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
@@ -496,6 +527,8 @@ impl Core {
     }
 
     fn ret(&mut self) {
+        self.busy = 3; // 16-bit PC, not AVRrc
+
         let ds = self.ds.borrow();
         self.sp += 1; let (bh, _) = ds.read(usize::from(self.sp)); 
         self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
@@ -503,6 +536,8 @@ impl Core {
     }
 
     fn reti(&mut self) {
+        self.busy = 3; // 16-bit PC, not AVRrc
+
         let ds = self.ds.borrow();
         self.sp += 1; let (bh, _) = ds.read(usize::from(self.sp)); 
         self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
@@ -512,11 +547,13 @@ impl Core {
     }
 
     fn rjmp(&mut self, offset: i16) {
+        self.busy = 1;
+
         (self.pc, _) = self.pc.overflowing_add(offset as u16);
     }
 
     #[allow(non_snake_case)]
-    fn sbix(&mut self, ioreg: u8, bit: u8, set: bool) -> u8 {
+    fn sbix(&mut self, ioreg: u8, bit: u8, set: bool) {
         use Instruction::*;
         
         let bitval_n = (self.ds.borrow().read(usize::from(ioreg)).0 & (1<<bit)) == 0;
@@ -525,16 +562,14 @@ impl Core {
             let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
             let op = Instruction::decode(opcode);
             match op {
-                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
-                _ => {self.pc += 1; 1},
+                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; self.busy = 2},
+                _ => {self.pc += 1; self.busy = 1},
             }
-        } else {
-            0
-        } 
+        }
     }
 
     #[allow(non_snake_case)]
-    fn sbrx(&mut self, Rr: u8, bit: u8, set: bool) -> u8 {
+    fn sbrx(&mut self, Rr: u8, bit: u8, set: bool) {
         use Instruction::*;
         
         let bitval_n = (self.get_r(Rr) & (1<<bit)) == 0;
@@ -543,11 +578,9 @@ impl Core {
             let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
             let op = Instruction::decode(opcode);
             match op {
-                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; 2},
-                _ => {self.pc += 1; 1},
+                CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; self.busy = 2},
+                _ => {self.pc += 1; self.busy = 1},
             }
-        } else {
-            0
         } 
     }
 
@@ -618,8 +651,116 @@ impl Core {
         self.set_r(Rd, self.get_ior(ioreg));
     }
 
+    #[allow(non_snake_case)]
+    fn ld(&mut self, Rd: u8, Rp: u8, offset: u8, dec: bool, inc: bool) {
+        self.busy = 2; // AVRxt, SRAM only
+        
+        let mut address = self.get_rw(Rp);
+
+        if dec {
+            address = address.wrapping_sub(1);
+            self.set_rw(Rp, address)
+        }
+
+        self.set_r(Rd, self.get_ds((address as u32) + (offset as u32)));
+
+        if inc {
+            address = address.wrapping_add(1);
+            self.set_rw(Rp, address)
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn st(&mut self, Rr: u8, Rp: u8, offset: u8, dec: bool, inc: bool) {
+        self.busy = 1;
+        
+        let mut address = self.get_rw(Rp);
+
+        if dec {
+            address = address.wrapping_sub(1);
+            self.set_rw(Rp, address)
+        }
+
+        self.set_ds((address as u32) + (offset as u32), self.get_r(Rr));
+
+        if inc {
+            address = address.wrapping_add(1);
+            self.set_rw(Rp, address)
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn ldi(&mut self, Rd: u8, val: u8) {
+        self.set_r(Rd, val);
+    }
+
+    #[allow(non_snake_case)]
+    fn lds(&mut self, Rd: u8, address: u16) {
+        self.busy = 2; // AVRxt, SRAM only
+
+        let val = self.get_ds(address as u32);
+        self.set_r(Rd, val);
+    }
+    
+    #[allow(non_snake_case)]
+    fn lpm(&mut self, Rd: u8, inc: bool) {
+        self.busy = 2;
+
+        let mut address = self.get_rw(30);
+
+        self.set_r(Rd, self.get_ps(address as u32));
+
+        if inc {
+            address = address.wrapping_add(1);
+            self.set_rw(30, address)
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn mov(&mut self, Rd: u8, Rr: u8) {
+        self.set_r(Rd, self.get_r(Rr))
+    }
+
+    #[allow(non_snake_case)]
+    fn movw(&mut self, Rd: u8, Rr: u8) {
+        self.set_rw(Rd, self.get_rw(Rr))
+    }
+
+    #[allow(non_snake_case)]
+    fn out(&mut self, Rr: u8, ioreg: u8) {
+        self.set_ior(ioreg, self.get_r(Rr));
+    }
+
+    #[allow(non_snake_case)]
+    fn pop(&mut self, Rd: u8) {
+        self.busy = 1; // 2 for AVRrc
+
+        self.pc = self.pc.overflowing_add(1).0;
+        self.set_r(Rd, self.get_ds(self.pc as u32));
+    }
+
+    #[allow(non_snake_case)]
+    fn push(&mut self, Rr: u8) {
+        self.set_ds(self.pc as u32, self.get_r(Rr));
+        self.pc = self.pc.overflowing_sub(1).0;
+    }
+
+    #[allow(non_snake_case)]
+    fn sts(&mut self, Rr: u8, address: u16) {
+        self.busy = 1;  // SRAM only
+
+        self.set_ds(address as u32, self.get_r(Rr));
+    }
+
     pub fn tick(&mut self) -> bool {
         use Instruction::*; 
+
+        // Wait for multi-cycle instructions to complete
+        if self.busy > 0 {
+            self.busy = self.busy - 1;
+            println!("[0x{:04X}] ...", self.pc);
+            return true;
+        }
 
         let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
         let op = Instruction::decode(opcode);
@@ -638,45 +779,45 @@ impl Core {
             // Arithmetic
             ADC     {Rd, Rr}    => {self.adc(Rd,Rr)},
             ADD     {Rd, Rr}    => {self.add(Rd,Rr)},
-            ADIW    {Rd, val}   => {self.adiw(Rd, val); self.busy = 1},
+            ADIW    {Rd, val}   => {self.adiw(Rd, val)},
             ANDI    {Rd, val}   => {self.andi(Rd, val)},
             COM     {Rd}            => {self.com(Rd)},
             DEC     {Rd}            => {self.dec(Rd)},
             EOR     {Rd, Rr}    => {self.eor(Rd,Rr)},
-            FMUL    {Rd, Rr}    => {self.fmul(Rd,Rr); self.busy = 1},
-            FMULS   {Rd, Rr}    => {self.fmuls(Rd,Rr); self.busy = 1},
-            FMULSU  {Rd, Rr}    => {self.fmulsu(Rd,Rr); self.busy = 1},
+            FMUL    {Rd, Rr}    => {self.fmul(Rd,Rr)},
+            FMULS   {Rd, Rr}    => {self.fmuls(Rd,Rr)},
+            FMULSU  {Rd, Rr}    => {self.fmulsu(Rd,Rr)},
             INC     {Rd}            => {self.inc(Rd)},
-            MUL     {Rd, Rr}    => {self.mul(Rd,Rr); self.busy = 1},
-            MULS    {Rd, Rr}    => {self.muls(Rd,Rr); self.busy = 1},
-            MULSU   {Rd, Rr}    => {self.mulsu(Rd,Rr); self.busy = 1},
+            MUL     {Rd, Rr}    => {self.mul(Rd,Rr)},
+            MULS    {Rd, Rr}    => {self.muls(Rd,Rr)},
+            MULSU   {Rd, Rr}    => {self.mulsu(Rd,Rr)},
             NEG     {Rd}            => {self.neg(Rd)},
             OR      {Rd, Rr}    => {self.or(Rd, Rr)},
             ORI     {Rd, val}   => {self.ori(Rd, val)},
             SBC     {Rd, Rr}    => {self.sbc(Rd, Rr)},
             SBCI    {Rd,val}    => {self.sbci(Rd, val)},
-            SBIW    {Rd,val}    => {self.sbiw(Rd, val); self.busy = 1},
+            SBIW    {Rd,val}    => {self.sbiw(Rd, val)},
             SUB     {Rd, Rr}    => {self.sub(Rd, Rr)},
             SUBI    {Rd, val}   => {self.subi(Rd, val)},
             //Flow
-            BRBC    {offset, bit}   => {self.busy = self.brbx(bit, offset, false)},
-            BRBS    {offset, bit}   => {self.busy = self.brbx(bit, offset, true)},
-            CALL    {address}          => {self.call(address); self.busy = 2},
+            BRBC    {offset, bit}   => {self.brbx(bit, offset, false)},
+            BRBS    {offset, bit}   => {self.brbx(bit, offset, true)},
+            CALL    {address}          => {self.call(address)},
             CP      { Rd, Rr }      => {self.cp(Rd, Rr)},
             CPC     { Rd, Rr }      => {self.cpc(Rd, Rr)},
             CPI     { Rd, val }     => {self.cpi(Rd, val)},
-            CPSE    { Rd, Rr }      => {self.busy  = self.cpse(Rd, Rr)},
-            ICALL                           => {self.icall(); self.busy = 1},
-            IJMP                            => {self.ijmp(); self.busy = 1},
-            JMP     { address }        => {self.jmp(address); self.busy = 2},
-            RCALL   { offset }         => {self.rcall(offset); self.busy = 1},
-            RET                             => {self.ret(); self.busy = 3},
-            RETI                            => {self.reti(); self.busy = 3},
-            RJMP    { offset }         => {self.rjmp(offset); self.busy = 1},
-            SBIC    { ioreg, bit }  => {self.busy = self.sbix(ioreg, bit, false)},
-            SBIS    { ioreg, bit }  => {self.busy = self.sbix(ioreg, bit, true)},
-            SBRC    { Rr, bit }     => {self.busy = self.sbrx(Rr, bit, false)},
-            SBRS    { Rr, bit }     => {self.busy = self.sbrx(Rr, bit, true)},
+            CPSE    { Rd, Rr }      => {self.cpse(Rd, Rr)},
+            ICALL                           => {self.icall()},
+            IJMP                            => {self.ijmp()},
+            JMP     { address }        => {self.jmp(address)},
+            RCALL   { offset }         => {self.rcall(offset)},
+            RET                             => {self.ret()},
+            RETI                            => {self.reti()},
+            RJMP    { offset }         => {self.rjmp(offset)},
+            SBIC    { ioreg, bit }  => {self.sbix(ioreg, bit, false)},
+            SBIS    { ioreg, bit }  => {self.sbix(ioreg, bit, true)},
+            SBRC    { Rr, bit }     => {self.sbrx(Rr, bit, false)},
+            SBRS    { Rr, bit }     => {self.sbrx(Rr, bit, true)},
             //Bit
             ASR     { Rd }              => {self.asr(Rd)},
             BCLR    { bit }             => {self.bclr(bit)},
@@ -692,35 +833,35 @@ impl Core {
             SWAP    { Rd }              => {self.swap(Rd)},
             //Data transfer
             IN          { Rd, ioreg }       => {self.iin(Rd, ioreg)},
-            LDX         { Rd }                  => {},
-            LDXdec      { Rd }                  => {},
-            LDXinc      { Rd }                  => {},
-            LDYdec      { Rd }                  => {},
-            LDYinc      { Rd }                  => {},
-            LDZdec      { Rd }                  => {},
-            LDZinc      { Rd }                  => {},
-            LDDY        { Rd, offset }      => {},
-            LDDZ        { Rd, offset}       => {},
-            LDI         { Rd, val }         => {},
-            LDS         { Rd, address }    => {},
-            LPM                                     => {},
-            LPMRdZ      { Rd }                  => {},
-            LPMRdZinc   { Rd }                  => {},
-            MOV         { Rd, Rr }          => {},
-            MOVW        { Rd, Rr }          => {},
-            OUT         { Rr, ioreg }       => {},
-            POP         { Rd }                  => {},
-            PUSH        { Rr }                  => {},
-            STX         { Rr }                  => {},
-            STXdec      { Rr }                  => {},
-            STXinc      { Rr }                  => {},
-            STYdec      { Rr }                  => {},
-            STYinc      { Rr }                  => {},
-            STZdec      { Rr }                  => {},
-            STZinc      { Rr }                  => {},
-            STDY        { Rr, offset }      => {},
-            STDZ        { Rr, offset }      => {},
-            STS         { Rr, address }    => {},
+            LDX         { Rd }                  => {self.ld(Rd, 26, 0, false, false)},
+            LDXdec      { Rd }                  => {self.ld(Rd, 26, 0, true, false)},
+            LDXinc      { Rd }                  => {self.ld(Rd, 26, 0, false, true)},
+            LDYdec      { Rd }                  => {self.ld(Rd, 28, 0, true, false)},
+            LDYinc      { Rd }                  => {self.ld(Rd, 28, 0, false, true)},
+            LDZdec      { Rd }                  => {self.ld(Rd, 30, 0, true, false)},
+            LDZinc      { Rd }                  => {self.ld(Rd, 30, 0, false, true)},
+            LDDY        { Rd, offset }      => {self.ld(Rd, 28, offset, false, false)},
+            LDDZ        { Rd, offset}       => {self.ld(Rd, 30, offset, false, false)},
+            LDI         { Rd, val }         => {self.ldi(Rd, val)},
+            LDS         { Rd, address }    => {self.lds(Rd, address)},
+            LPM                                     => {self.lpm(0, false)},
+            LPMRdZ      { Rd }                  => {self.lpm(Rd, false)},
+            LPMRdZinc   { Rd }                  => {self.lpm(Rd, true)},
+            MOV         { Rd, Rr }          => {self.mov(Rd, Rr)},
+            MOVW        { Rd, Rr }          => {self.movw(Rd, Rr)},
+            OUT         { Rr, ioreg }       => {self.out(Rr, ioreg)},
+            POP         { Rd }                  => {self.pop(Rd)},
+            PUSH        { Rr }                  => {self.push(Rr)},
+            STX         { Rr }                  => {self.st(Rr, 26, 0, false, false)},
+            STXdec      { Rr }                  => {self.st(Rr, 26, 0, true, false)},
+            STXinc      { Rr }                  => {self.st(Rr, 26, 0, false, true)},
+            STYdec      { Rr }                  => {self.st(Rr, 28, 0, true, false)},
+            STYinc      { Rr }                  => {self.st(Rr, 28, 0, false, true)},
+            STZdec      { Rr }                  => {self.st(Rr, 30, 0, true, false)},
+            STZinc      { Rr }                  => {self.st(Rr, 30, 0, false, true)},
+            STDY        { Rr, offset }      => {self.st(Rr, 28, offset, false, false)},
+            STDZ        { Rr, offset }      => {self.st(Rr, 30, offset, false, false)},
+            STS         { Rr, address }    => {self.sts(Rr, address)},
             //Undefined
             UNDEF   => { panic!("[0x{:04X}] Undefined opcode: {:b}", self.pc, opcode) },
             _       => { panic!("Unhandled instruction!") }
