@@ -4,6 +4,7 @@ use std::rc::Rc;
 use super::memory::MemoryMapped;
 
 use bitmatch::bitmatch;
+use bitvec::prelude::*;
 
 #[allow(dead_code)]
 pub enum CoreType {
@@ -457,57 +458,99 @@ impl Core {
         self.pc = address as u16;
     }
 
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     #[allow(unused_assignments)]
     fn cp(&mut self, Rd: u8, Rr: u8) {
         // Rd - Rr
-        let mut rd = self.get_r(Rd); 
+        let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
-        let c: bool;
 
-        (rd, c) = rd.overflowing_sub(rr);
+        let (r, C) = rd.overflowing_sub(rr);
 
-        self.set_sreg_bit(BitSREG::C, c)
+        let br = r.view_bits::<Lsb0>();
+        let brd = rd.view_bits::<Lsb0>();
+        let brr = rr.view_bits::<Lsb0>();
+
+        let Z = r == 0;
+        let N = br[7];
+        let V = (brd[7] & !brr[7] & !br[7]) | (!brd[7] & brr[7] & br[7]);
+        let S = N ^ V;
+        let H = (!brd[3] & brr[3]) | (brr[3] & br[3]) | (br[3] & !brd[3]);
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
+        self.set_sreg_bit(BitSREG::H, H);
     }
 
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     #[allow(unused_assignments)]
     fn cpc(&mut self, Rd: u8, Rr: u8) {
         // Rd - Rr - C
-        let mut rd = self.get_r(Rd); 
-        let rr = self.get_r(Rr); 
-        let mut c = self.get_sreg_bit(BitSREG::C);
+        let rd = self.get_r(Rd); 
+        let rr = self.get_r(Rr);
+        let mut r: u8;
+        let mut C = self.get_sreg_bit(BitSREG::C);
+        let Z = self.get_sreg_bit(BitSREG::Z);
 
-        if c {
-            (rd, c) = rd.overflowing_sub(1);
-            if c {
+        if C {
+            (r, C) = rd.overflowing_sub(1);
+            if C {
                 // We overflowed so cant overflow again
-                rd -= rr;
+                r -= rr;
             } else {
                 // We could still overflow
-                (rd, c) = rd.overflowing_sub(rr);
+                (r, C) = r.overflowing_sub(rr);
             }
         } else {
             // Carry bit is not set, normal overflowing sub
-            (rd, c) = rd.overflowing_sub(rr);
+            (r, C) = rd.overflowing_sub(rr);
         }
 
-        self.set_sreg_bit(BitSREG::C, c);
+        let br = r.view_bits::<Lsb0>();
+        let brd = rd.view_bits::<Lsb0>();
+        let brr = rr.view_bits::<Lsb0>();
+
+        let Z = Z & (r == 0);
+        let N = br[7];
+        let V = (brd[7] & !brr[7] & !br[7]) | (!brd[7] & brr[7] & br[7]);
+        let S = N ^ V;
+        let H = (!brd[3] & brr[3]) | (brr[3] & br[3]) | (br[3] & !brd[3]);
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
+        self.set_sreg_bit(BitSREG::H, H);
     }
 
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     #[allow(unused_assignments)]
     fn cpi(&mut self, Rd: u8, val: u8) {
         // Rd - val
-        let mut rd = self.get_r(Rd); 
-        let c: bool;
+        let rd = self.get_r(Rd); 
 
-        (rd, c) = rd.overflowing_sub(val);
+        let (r, C) = rd.overflowing_sub(val);
 
-        self.set_sreg_bit(BitSREG::C, c)
+        let br = r.view_bits::<Lsb0>();
+        let brd = rd.view_bits::<Lsb0>();
+        let bk = val.view_bits::<Lsb0>();
+
+        let Z = r == 0;
+        let N = br[7];
+        let V = (brd[7] & !bk[7] & !br[7]) | (!brd[7] & bk[7] & br[7]);
+        let S = N ^ V;
+        let H = (!brd[3] & bk[3]) | (bk[3] & br[3]) | (br[3] & !brd[3]);
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
+        self.set_sreg_bit(BitSREG::H, H);
     }
 
     #[allow(non_snake_case)]
@@ -613,11 +656,23 @@ impl Core {
     }
 
     // BIT MANIPULATION INSTRUCTIONS
-
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn asr(&mut self, Rd: u8) {
-        self.set_r(Rd, ((self.get_r(Rd) as i8) >> 1) as u8);  
+        let vRd = self.get_r(Rd);
+        let vR = ((vRd as i8) >> 1) as u8;
+        self.set_r(Rd, vR); 
+ 
+        let C = vRd.view_bits::<Lsb0>()[0];
+        let Z = vR == 0;
+        let N = vR.view_bits::<Lsb0>()[7];
+        let V = N ^ C;
+        let S = N ^ V;
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
     }
     
     fn bclr(&mut self, bit: u8) {
@@ -647,28 +702,84 @@ impl Core {
         self.ds.borrow_mut().write(usize::from(ioreg), val & !(1 << bit));
     }
     
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn lsl(&mut self, Rd: u8) {
-        self.set_r(Rd, self.get_r(Rd) << 1);  
+        let vRd = self.get_r(Rd);
+        let vR = vRd << 1;
+        self.set_r(Rd, vR);  
+
+        let C = vRd.view_bits::<Lsb0>()[7];
+        let Z = vR == 0;
+        let N = vR.view_bits::<Lsb0>()[7];
+        let V = N ^ C;
+        let S = N ^ V;
+        let H = vRd.view_bits::<Lsb0>()[3];
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
+        self.set_sreg_bit(BitSREG::H, H);
     }
     
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
-    fn lsr(&mut self, Rd: u8) {
-        self.set_r(Rd, self.get_r(Rd) >> 1);  
+    fn lsr(&mut self, Rd: u8) {     
+        let vRd = self.get_r(Rd);
+        let vR = vRd >> 1;
+        self.set_r(Rd, vR);  
+
+        let C = vRd.view_bits::<Lsb0>()[0];
+        let Z = vR == 0;
+        let N = false;
+        let V = N ^ C;
+        let S = N ^ V;
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
     }
     
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn rol(&mut self, Rd: u8) {
-        self.set_r(Rd, self.get_r(Rd).rotate_left(1));       
+        let vRd = self.get_r(Rd);
+        let vR = vRd.rotate_left(1);
+        self.set_r(Rd, vR);  
+
+        let C = vRd.view_bits::<Msb0>()[0];
+        let Z = vR == 0;
+        let N = vR.view_bits::<Msb0>()[0];
+        let V = N ^ C;
+        let S = N ^ V;
+        let H = vRd.view_bits::<Lsb0>()[3];
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
+        self.set_sreg_bit(BitSREG::H, H);
     }
     
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn ror(&mut self, Rd: u8) {
-        self.set_r(Rd, self.get_r(Rd).rotate_right(1));
+        let vRd = self.get_r(Rd);
+        let vR = vRd.rotate_right(1);
+        self.set_r(Rd, vR);  
+
+        let C = vRd.view_bits::<Lsb0>()[0];
+        let Z = vR == 0;
+        let N = vR.view_bits::<Lsb0>()[7];
+        let V = N ^ C;
+        let S = N ^ V;
+        
+        self.set_sreg_bit(BitSREG::C, C);
+        self.set_sreg_bit(BitSREG::Z, Z);
+        self.set_sreg_bit(BitSREG::N, N);
+        self.set_sreg_bit(BitSREG::V, V);
+        self.set_sreg_bit(BitSREG::S, S);
     }
     
     fn sbi(&mut self, ioreg: u8, bit: u8) {
