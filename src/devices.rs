@@ -6,6 +6,12 @@ use super::memory::MemoryMapped;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+
+use ihex::Reader;
+use ihex::Record;
 
 pub enum DeviceType {
     ATtiny1626
@@ -39,6 +45,37 @@ impl Device {
             
             
         }
+    }
+
+    pub fn load_hex(&mut self, filename: &String) {
+        let path = Path::new(filename);
+        let display = path.display();
+    
+        // Open the path in read-only mode, returns `io::Result<File>`
+        let mut file = match File::open(&path) {
+            Err(why) => panic!("Couldn't open {}: {}", display, why),
+            Ok(file) => file,
+        };
+    
+        // Read the file contents into a string, returns `io::Result<usize>`
+        let mut s = String::new();
+        match file.read_to_string(&mut s) {
+            Err(why) => panic!("Couldn't read {}: {}", display, why),
+            Ok(_) => {
+                let hex = Reader::new(&s);
+                for r in hex {
+                    if let Record::Data{offset, value} = r.unwrap() {
+                        println!("[HEX] 0x{:04X} Writing {} bytes.", offset, value.len());
+                        let mut address = usize::from(offset);
+                        for b in value {
+                            self.flash.borrow_mut().write(address, b);
+                            address += 1;
+                        }
+                    }
+                }
+            }
+        };
+
     }
 
     pub fn load_test_programme(&mut self) {

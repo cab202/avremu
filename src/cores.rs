@@ -81,6 +81,10 @@ impl Core {
     fn get_ps(&self, address: u32) -> u8 {
         self.progmem.borrow().read(usize::try_from(address).unwrap()).0
     }
+    
+    fn get_progmem(&self, pc: u32) -> u16 {
+        self.progmem.borrow().read_word(usize::try_from(pc<<1).unwrap()).0
+    }
 
     #[allow(dead_code)]
     fn set_ps(&mut self, address: u32, val: u8) {
@@ -558,8 +562,9 @@ impl Core {
         use Instruction::*;
 
         if Rd == Rr {
-            let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
-            let op = Instruction::decode(opcode);
+            let opcode = self.get_progmem(self.pc as u32);
+            let prefetch = self.get_progmem((self.pc + 1) as u32);
+            let op = Instruction::decode(opcode, prefetch);
             match op {
                 CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; self.busy = 2},
                 _ => {self.pc += 1; self.busy = 1}
@@ -630,8 +635,9 @@ impl Core {
         let bitval_n = (self.ds.borrow().read(usize::from(ioreg)).0 & (1<<bit)) == 0;
 
         if set ^ bitval_n {
-            let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
-            let op = Instruction::decode(opcode);
+            let opcode = self.get_progmem(self.pc as u32);
+            let prefetch = self.get_progmem((self.pc + 1) as u32);
+            let op = Instruction::decode(opcode, prefetch);
             match op {
                 CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; self.busy = 2},
                 _ => {self.pc += 1; self.busy = 1},
@@ -646,8 +652,9 @@ impl Core {
         let bitval_n = (self.get_r(Rr) & (1<<bit)) == 0;
 
         if set ^ bitval_n {
-            let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
-            let op = Instruction::decode(opcode);
+            let opcode = self.get_progmem(self.pc as u32);
+            let prefetch = self.get_progmem((self.pc + 1) as u32);
+            let op = Instruction::decode(opcode, prefetch);
             match op {
                 CALL{..} | JMP{..} | LDS{..} | STS{..} => {self.pc += 2; self.busy = 2},
                 _ => {self.pc += 1; self.busy = 1},
@@ -908,8 +915,9 @@ impl Core {
             return true;
         }
 
-        let opcode = self.progmem.borrow().read_word(usize::from(self.pc << 1)).0;
-        let op = Instruction::decode(opcode);
+        let opcode = self.get_progmem(self.pc as u32);
+        let prefetch = self.get_progmem((self.pc + 1) as u32);
+        let op = Instruction::decode(opcode, prefetch);
 
         println!("[0x{:04X}] {:?}", self.pc, op);
 
@@ -989,7 +997,7 @@ impl Core {
             LDDY        { Rd, offset }      => {self.ld(Rd, 28, offset, false, false)},
             LDDZ        { Rd, offset}       => {self.ld(Rd, 30, offset, false, false)},
             LDI         { Rd, val }         => {self.ldi(Rd, val)},
-            LDS         { Rd, address }    => {self.lds(Rd, address)},
+            LDS         { Rd, address }    => {self.lds(Rd, address); self.pc += 1},
             LPM                                     => {self.lpm(0, false)},
             LPMRdZ      { Rd }                  => {self.lpm(Rd, false)},
             LPMRdZinc   { Rd }                  => {self.lpm(Rd, true)},
@@ -1007,7 +1015,7 @@ impl Core {
             STZinc      { Rr }                  => {self.st(Rr, 30, 0, false, true)},
             STDY        { Rr, offset }      => {self.st(Rr, 28, offset, false, false)},
             STDZ        { Rr, offset }      => {self.st(Rr, 30, offset, false, false)},
-            STS         { Rr, address }    => {self.sts(Rr, address)},
+            STS         { Rr, address }    => {self.sts(Rr, address); self.pc += 1},
             //Undefined
             UNDEF   => { panic!("[0x{:04X}] Undefined opcode: {:b}", self.pc, opcode) },
             _       => { panic!("Unhandled instruction!") }
@@ -1142,50 +1150,56 @@ impl BitSREG {
 
 impl Instruction {
     #[bitmatch]
-    fn decode (opcode: u16) -> Instruction {
+    fn decode (opcode: u16, prefetch: u16) -> Instruction {
         #[bitmatch]
         match opcode {
             "0000_0000_0000_0000" => Instruction::NOP,
             "0000_11rd_dddd_rrrr" => Instruction::ADD { Rd: d as u8, Rr: r as u8 },
             "0001_11rd_dddd_rrrr" if r != d => Instruction::ADC { Rd: d as u8, Rr: r as u8},
-            "1001_0110_kkdd_kkkk" => Instruction::ADIW { 
-                                        Rd: {
-                                            ((d as u8)<<1)+24
-                                        }, 
-                                        val: k as u8 
-                                    },
+            "1001_0110_kkdd_kkkk" => Instruction::ADIW { Rd: ((d as u8) << 1) + 24, val: k as u8 },
             "0010_00rd_dddd_rrrr" => Instruction::AND { Rd: d as u8, Rr: r as u8 },
-            "0111_kkkk_dddd_kkkk" => Instruction::ANDI { Rd: d as u8, val: k as u8 },
+            "0111_kkkk_dddd_kkkk" => Instruction::ANDI { Rd: (d as u8) + 16, val: k as u8 },
             "1001_010d_dddd_0101" => Instruction::ASR { Rd: d as u8 },
             "1001_0100_1sss_1000" => Instruction::BCLR { bit: s as u8 },
             "1111_100d_dddd_0bbb" => Instruction::BLD { Rd: d as u8, bit: b as u8 },
-            "1111_01kk_kkkk_ksss" => Instruction::BRBC { offset: k as i8, bit: s as u8 },
-            "1111_00kk_kkkk_ksss" => Instruction::BRBS { offset: k as i8, bit: s as u8 },
+            "1111_01kk_kkkk_ksss" => Instruction::BRBC { 
+                                        offset: {
+                                            let mut k = k as u8;
+                                            let kb = k.view_bits_mut::<Lsb0>();
+                                            kb.set(7, kb[6]);
+                                            k as i8
+                                        },
+                                        bit: s as u8 
+                                    },
+            "1111_00kk_kkkk_ksss" => Instruction::BRBS { 
+                                        offset: {
+                                            let mut k = k as u8;
+                                            let kb = k.view_bits_mut::<Lsb0>();
+                                            kb.set(7, kb[6]);
+                                            k as i8
+                                        },
+                                        bit: s as u8 
+                                    },
             "1001_0101_1001_1000" => Instruction::BREAK,
             "1001_0100_0sss_1000" => Instruction::BSET { bit: s as u8 },
             "1111_101d_dddd_0bbb" => Instruction::BST { Rd: d as u8, bit: b as u8 },
-            "1001_010k_kkkk_111k" => Instruction::CALL { 
-                                        address: {
-                                            // Fetch next word in programme memory
-                                            (k as u32) << 16 
-                                        }
-                                    },
+            "1001_010k_kkkk_111k" => Instruction::CALL { address: ((k as u32) << 16) | (prefetch as u32) },
             "1001_1000_aaaa_abbb" => Instruction::CBI { ioreg: a as u8, bit: b as u8 },
             "1001_010d_dddd_0000" => Instruction::COM { Rd: d as u8 },
             "0001_01rd_dddd_rrrr" => Instruction::CP { Rd: d as u8, Rr: r as u8 },
             "0000_01rd_dddd_rrrr" => Instruction::CPC { Rd: d as u8, Rr: r as u8 },
-            "0011_kkkk_dddd_kkkk" => Instruction::CPI { Rd: d as u8, val: k as u8 },
+            "0011_kkkk_dddd_kkkk" => Instruction::CPI { Rd: d as u8 + 16, val: k as u8 },
             "0001_00rd_dddd_rrrr" => Instruction::CPSE { Rd: d as u8, Rr: r as u8 },
             "1001_010d_dddd_1010" => Instruction::DEC { Rd: d as u8 },
             "0010_01rd_dddd_rrrr" => Instruction::EOR { Rd: d as u8, Rr: r as u8 },
-            "0000_0011_0ddd_1rrr" => Instruction::FMUL { Rd: d as u8, Rr: r as u8 },
-            "0000_0011_1ddd_0rrr" => Instruction::FMULS { Rd: d as u8, Rr: r as u8 },
-            "0000_0011_1ddd_1rrr" => Instruction::FMULSU { Rd: d as u8, Rr: r as u8 },
+            "0000_0011_0ddd_1rrr" => Instruction::FMUL { Rd: d as u8 + 16, Rr: r as u8 + 16 },
+            "0000_0011_1ddd_0rrr" => Instruction::FMULS { Rd: d as u8 + 16, Rr: r as u8 + 16 },
+            "0000_0011_1ddd_1rrr" => Instruction::FMULSU { Rd: d as u8 + 16, Rr: r as u8 + 16 },
             "1001_0101_0000_1001" => Instruction::ICALL,
             "1001_0100_0000_1001" => Instruction::IJMP,
             "1011_0aad_dddd_aaaa" => Instruction::IN { Rd: d as u8, ioreg: a as u8 },
             "1001_010d_dddd_0011" => Instruction::INC { Rd: d as u8 },
-            "1001_010k_kkkk_110k" => Instruction::JMP { address: k as u32}, //FIX
+            "1001_010k_kkkk_110k" => Instruction::JMP { address: ((k as u32) << 16) | (prefetch as u32) },
             "1001_000d_dddd_1100" => Instruction::LDX { Rd: d as u8 },
             "1001_000d_dddd_1110" => Instruction::LDXdec { Rd: d as u8 },
             "1001_000d_dddd_1101" => Instruction::LDXinc { Rd: d as u8 },
@@ -1195,37 +1209,57 @@ impl Instruction {
             "1001_000d_dddd_0001" => Instruction::LDZinc { Rd: d as u8 },
             "10q0_qq0d_dddd_1qqq" => Instruction::LDDY { Rd: d as u8, offset: q as u8 },
             "10q0_qq0d_dddd_0qqq" => Instruction::LDDZ { Rd: d as u8, offset: q as u8 },
-            "1110_kkkk_dddd_kkkk" => Instruction::LDI { Rd: d as u8, val: k as u8 },
-            "1001_000d_dddd_0000" => Instruction::LDS { Rd: d as u8, address: 0 as u16 }, //FIX
+            "1110_kkkk_dddd_kkkk" => Instruction::LDI { Rd: d as u8 + 16, val: k as u8 },
+            "1001_000d_dddd_0000" => Instruction::LDS { Rd: d as u8, address: prefetch },
             "1001_0101_1100_1000" => Instruction::LPM,
             "1001_000d_dddd_0100" => Instruction::LPMRdZ { Rd: d as u8 },
             "1001_000d_dddd_0101" => Instruction::LPMRdZinc { Rd: d as u8 },
             "0000_11dd_dddd_dddd" => Instruction::LSL { Rd: d as u8 },
             "1001_010d_dddd_0110" => Instruction::LSR { Rd: d as u8 },
             "0010_11rd_dddd_rrrr" => Instruction::MOV { Rd: d as u8, Rr: r as u8 },
-            "0000_0001_dddd_rrrr" => Instruction::MOVW { Rd: d as u8, Rr: r as u8 },
-            "1001_11rd_dddd_rrrr" => Instruction::MUL { Rd: d as u8, Rr: r as u8 },
-            "0000_0010_dddd_rrrr" => Instruction::MULS { Rd: d as u8, Rr: r as u8 },
-            "0000_0011_0ddd_0rrr" => Instruction::MULSU { Rd: d as u8, Rr: r as u8 },
+            "0000_0001_dddd_rrrr" => Instruction::MOVW { Rd: (d as u8) << 1, Rr: (r as u8) << 1 },
+            "1001_11rd_dddd_rrrr" => Instruction::MUL { Rd: d as u8 + 16, Rr: r as u8 + 16 },
+            "0000_0010_dddd_rrrr" => Instruction::MULS { Rd: d as u8 + 16, Rr: r as u8 + 16 },
+            "0000_0011_0ddd_0rrr" => Instruction::MULSU { Rd: d as u8 + 16, Rr: r as u8 + 16 },
             "1001_010d_dddd_0001" => Instruction::NEG { Rd: d as u8 },
             "0000_0000_0000_0000" => Instruction::NOP,
             "0010_10rd_dddd_rrrr" => Instruction::OR { Rd: d as u8, Rr: r as u8 },
-            "0110_kkkk_dddd_kkkk" => Instruction::ORI { Rd: d as u8, val: k as u8 },
+            "0110_kkkk_dddd_kkkk" => Instruction::ORI { Rd: d as u8 + 16, val: k as u8 },
             "1011_1aar_rrrr_aaaa" => Instruction::OUT { Rr: r as u8, ioreg: a as u8 },
             "1001_000d_dddd_1111" => Instruction::POP { Rd: d as u8 },
             "1001_001r_rrrr_1111" => Instruction::PUSH { Rr: r as u8 },
-            "1101_kkkk_kkkk_kkkk" => Instruction::RCALL { offset: k as i16 }, //CHECK?
+            "1101_kkkk_kkkk_kkkk" => Instruction::RCALL { 
+                                        offset: {
+                                            let mut k = k as u16;
+                                            let kb = k.view_bits_mut::<Lsb0>();
+                                            kb.set(12, kb[11]);
+                                            kb.set(13, kb[11]);
+                                            kb.set(14, kb[11]);
+                                            kb.set(15, kb[11]);
+                                            k as i16
+                                        }
+                                    },
             "1001_0101_0000_1000" => Instruction::RET,
             "1001_0101_0001_1000" => Instruction::RETI,
-            "1100_kkkk_kkkk_kkkk" => Instruction::RJMP { offset: k as i16 }, //CHECK
+            "1100_kkkk_kkkk_kkkk" => Instruction::RJMP { 
+                                        offset: {
+                                            let mut k = k as u16;
+                                            let kb = k.view_bits_mut::<Lsb0>();
+                                            kb.set(12, kb[11]);
+                                            kb.set(13, kb[11]);
+                                            kb.set(14, kb[11]);
+                                            kb.set(15, kb[11]);
+                                            k as i16
+                                        }
+                                    },
             "0001_11rd_dddd_rrrr" if r == d => Instruction::ROL { Rd: d as u8 },
             "1001_010d_dddd_0111" => Instruction::ROR { Rd: d as u8 },
             "0000_10rd_dddd_rrrr" => Instruction::SBC { Rd: d as u8, Rr: r as u8 },
-            "0100_kkkk_dddd_kkkk" => Instruction::SBCI { Rd: d as u8, val: k as u8 },
+            "0100_kkkk_dddd_kkkk" => Instruction::SBCI { Rd: d as u8 + 16, val: k as u8 },
             "1001_1010_aaaa_abbb" => Instruction::SBI { ioreg: a as u8, bit: b as u8 },
             "1001_1001_aaaa_abbb" => Instruction::SBIC { ioreg: a as u8, bit: b as u8 },
             "1001_1011_aaaa_abbb" => Instruction::SBIS { ioreg: a as u8, bit: b as u8 },
-            "1001_0111_kkdd_kkkk" => Instruction::SBIW { Rd: d as u8, val: k as u8 },
+            "1001_0111_kkdd_kkkk" => Instruction::SBIW { Rd: ((d as u8) << 1) + 24, val: k as u8 },
             "1111_110r_rrrr_0bbb" => Instruction::SBRC { Rr: r as u8, bit: b as u8 },
             "1111_111r_rrrr_0bbb" => Instruction::SBRS { Rr: r as u8, bit: b as u8 },
             "1001_0101_1000_1000" => Instruction::SLEEP,
@@ -1238,9 +1272,9 @@ impl Instruction {
             "1001_001r_rrrr_0001" => Instruction::STZinc { Rr: r as u8 },
             "10q0_qq1r_rrrr_1qqq" => Instruction::STDY { Rr: r as u8, offset: q as u8 },
             "10q0_qq1r_rrrr_0qqq" => Instruction::STDZ { Rr: r as u8, offset: q as u8 },
-            "1001_001r_rrrr_0000" => Instruction::STS { Rr: r as u8, address: 0 as u16 }, //FIX
+            "1001_001r_rrrr_0000" => Instruction::STS { Rr: r as u8, address: prefetch },
             "0001_10rd_dddd_rrrr" => Instruction::SUB { Rd: d as u8, Rr: r as u8 },
-            "0101_kkkk_dddd_kkkk" => Instruction::SUBI { Rd: d as u8, val: k as u8 },
+            "0101_kkkk_dddd_kkkk" => Instruction::SUBI { Rd: d as u8 + 16, val: k as u8 },
             "1001_010d_dddd_0010" => Instruction::SWAP { Rd: d as u8 },
             "1001_0101_1010_1000" => Instruction::WDR,
             _ => Instruction::UNDEF
