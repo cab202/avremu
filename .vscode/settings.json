@@ -1,0 +1,3 @@
+{
+    "rust-analyzer.runnables.cargoExtraArgs": ["D:\\firmware.hex", "1050"]
+}

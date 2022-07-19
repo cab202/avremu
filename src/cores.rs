@@ -25,21 +25,27 @@ pub struct Core {
     sp: u16,
     pub ds: Rc<RefCell<dyn MemoryMapped>>,
     pub progmem: Rc<RefCell<dyn MemoryMapped>>,
-    busy: u8
+    busy: u8,
+    debug: bool
 }
 
 impl Core {
-    pub fn new(variant: CoreType, ds: Rc<RefCell<dyn MemoryMapped>>, progmem: Rc<RefCell<dyn MemoryMapped>>) -> Self {
+    pub fn new(variant: CoreType, ds: Rc<RefCell<dyn MemoryMapped>>, progmem: Rc<RefCell<dyn MemoryMapped>>, sp_init: u16) -> Self {
         Self {
             variant,
             regs: [0;32],
             sreg: 0,
             pc: 0,
-            sp: 2047,
+            sp: sp_init,
             ds,
             progmem,
-            busy: 0
+            busy: 0,
+            debug: false
         }
+    }
+
+    pub fn debug(&mut self, on: bool) {
+        self.debug = on;
     }
 
     pub fn get_r(&self, r: u8) -> u8 {
@@ -103,6 +109,10 @@ impl Core {
         }
     }
 
+    pub fn get_sp(&self) -> u16 {
+        self.sp
+    }
+
     // ARITHMETIC INSTRUCTIONS
     #[allow(non_snake_case)]
     fn adc(&mut self, Rd: u8, Rr: u8) {
@@ -146,7 +156,6 @@ impl Core {
         self.set_sreg_bit(BitSREG::H, H);
     }
 
-    //TODO: Implement SREG update
     #[allow(non_snake_case)]
     fn add(&mut self, Rd: u8, Rr: u8) {
         // Rd <- Rd + Rr
@@ -805,8 +814,7 @@ impl Core {
     }
     
     fn cbi(&mut self, ioreg: u8, bit: u8) {
-        let val = self.ds.borrow().read(usize::from(ioreg)).0;
-        self.ds.borrow_mut().write(usize::from(ioreg), val & !(1 << bit));
+        self.ds.borrow_mut().set_bit(usize::from(ioreg), bit, false);
     }
     
     #[allow(non_snake_case)]
@@ -890,8 +898,7 @@ impl Core {
     }
     
     fn sbi(&mut self, ioreg: u8, bit: u8) {
-        let val = self.ds.borrow().read(usize::from(ioreg)).0;
-        self.ds.borrow_mut().write(usize::from(ioreg), val | (1 << bit));
+        self.ds.borrow_mut().set_bit(usize::from(ioreg), bit, true);
     }
 
     #[allow(non_snake_case)]
@@ -988,14 +995,14 @@ impl Core {
     fn pop(&mut self, Rd: u8) {
         self.busy = 1; // 2 for AVRrc
 
-        self.pc = self.pc.overflowing_add(1).0;
-        self.set_r(Rd, self.get_ds(self.pc as u32));
+        self.sp = self.sp.overflowing_add(1).0;
+        self.set_r(Rd, self.get_ds(self.sp as u32));
     }
 
     #[allow(non_snake_case)]
     fn push(&mut self, Rr: u8) {
-        self.set_ds(self.pc as u32, self.get_r(Rr));
-        self.pc = self.pc.overflowing_sub(1).0;
+        self.set_ds(self.sp as u32, self.get_r(Rr));
+        self.sp = self.sp.overflowing_sub(1).0;
     }
 
     #[allow(non_snake_case)]
@@ -1011,7 +1018,9 @@ impl Core {
         // Wait for multi-cycle instructions to complete
         if self.busy > 0 {
             self.busy = self.busy - 1;
-            println!("[0x{:04X}] ...", self.pc);
+            if self.debug {
+                println!("[0x{:04X}] ...", self.pc);
+            }
             return true;
         }
 
@@ -1019,14 +1028,16 @@ impl Core {
         let prefetch = self.get_progmem((self.pc + 1) as u32);
         let op = Instruction::decode(opcode, prefetch);
 
-        println!("[0x{:04X}] {:?}", self.pc, op);
+        if self.debug {
+            println!("[0x{:04X}] {:?}", self.pc, op);
+        }
 
         //Most instructions are single cycle so do this first
         self.pc += 1;
 
         match op {
             // Control
-            BREAK   => {return false}, // NOP if OCD disabled
+            BREAK   => {println!("[END] BREAK instruction encountered."); return false}, // NOP if OCD disabled
             NOP     => {},
             SLEEP   => {}, // Not implemented
             WDR     => {}, // Not implemented

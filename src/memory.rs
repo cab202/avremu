@@ -16,6 +16,15 @@ pub trait MemoryMapped {
         let bh =  (value >> 8) as u8;
         self.write(address, bl) + self.write(address+1, bh)
     }
+    fn set_bit(&mut self, address: usize, bit: u8, state: bool) -> usize {
+        let (val, _) = self.read(address);
+        if state {
+            self.write(address, val | (1 << bit));
+        } else {
+            self.write(address, val & !(1 << bit));
+        }
+        0
+    }
 }
 
 pub struct MemoryMap {
@@ -32,6 +41,7 @@ impl MemoryMap {
     }
 
     fn get_dev(&self, address: usize) -> (RefMut<dyn MemoryMapped>, usize)  {
+        //println!("get_dev: Got request to find device at 0x{:04X}", address);
         let idx = self.mm.binary_search_by(|dev| {
             if address < dev.0 {
                 Ordering::Greater
@@ -41,6 +51,7 @@ impl MemoryMap {
                 Ordering::Equal
             }
         }).expect("Attempt to access undefined region of memory map.");
+        //println!("get_dev: Found a device at 0x{:04X}, idx = {}", self.mm[idx].0, idx);
         (self.mm[idx].1.borrow_mut(), address-self.mm[idx].0)
     }
 }
@@ -65,14 +76,24 @@ impl MemoryMapped for MemoryMap {
 
 pub struct Memory {
     mem: Vec<u8>,
-    lat: usize
+    lat: usize,
+    read_only: bool
 }
 
 impl Memory {
     pub fn new(size: usize, fill: u8, lat: usize) -> Self {
         Memory {
             mem: vec![fill; size],
-            lat
+            lat, 
+            read_only: false
+        }
+    }
+
+    pub fn new_rom(mem: Vec<u8>, lat: usize) -> Self {
+        Memory {
+            mem,
+            lat, 
+            read_only: true
         }
     }
 }
@@ -87,7 +108,9 @@ impl MemoryMapped for Memory {
     }
 
     fn write(&mut self, address: usize, value: u8) -> usize {
-        self.mem[address] = value;
+        if !self.read_only {
+            self.mem[address] = value;
+        }
         0
     }
 }
