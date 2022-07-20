@@ -1129,7 +1129,7 @@ impl Core {
             STDZ        { Rr, offset }      => {self.st(Rr, 30, offset, false, false)},
             STS         { Rr, address }    => {self.sts(Rr, address); self.pc += 1},
             //Undefined
-            UNDEF   => { panic!("[0x{:04X}] Undefined opcode: {:b}", self.pc, opcode) }
+            UNDEF   => { println!("[ERROR] Undefined opcode: {:b}", opcode) }
         }
 
         //Return

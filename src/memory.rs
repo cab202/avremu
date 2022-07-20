@@ -40,9 +40,9 @@ impl MemoryMap {
         self.mm.push((offset, dev));
     }
 
-    fn get_dev(&self, address: usize) -> (RefMut<dyn MemoryMapped>, usize)  {
+    fn get_dev(&self, address: usize) -> Result<(RefMut<dyn MemoryMapped>, usize), String>  {
         //println!("get_dev: Got request to find device at 0x{:04X}", address);
-        let idx = self.mm.binary_search_by(|dev| {
+        match self.mm.binary_search_by(|dev| {
             if address < dev.0 {
                 Ordering::Greater
             } else if address >= dev.0+dev.1.borrow().get_size() {
@@ -50,9 +50,11 @@ impl MemoryMap {
             } else {
                 Ordering::Equal
             }
-        }).expect("Attempt to access undefined region of memory map.");
+        }) {
+            Ok(idx) => {Ok((self.mm[idx].1.borrow_mut(), address-self.mm[idx].0))},
+            Err(..) => {Err("Attempt to access undefined region of memory map.".to_string())}
+        }
         //println!("get_dev: Found a device at 0x{:04X}, idx = {}", self.mm[idx].0, idx);
-        (self.mm[idx].1.borrow_mut(), address-self.mm[idx].0)
     }
 }
 
@@ -62,13 +64,17 @@ impl MemoryMapped for MemoryMap {
     }
 
     fn read(&self, address: usize) -> (u8, usize) {
-        let (dev, offset) = self.get_dev(address);
-        dev.read(offset)
+        match self.get_dev(address) {
+            Ok((dev, offset)) => dev.read(offset),
+            Err(error) => { println!("[ERROR] {}", error); (0, 0) }
+        }     
     }
 
     fn write(&mut self, address: usize, value: u8) -> usize {
-        let (mut dev, offset) = self.get_dev(address);
-        dev.write(offset, value)
+        match self.get_dev(address) {
+            Ok((mut dev, offset)) => dev.write(offset, value),
+            Err(error) => { println!("[ERROR] {}", error); 0 }
+        } 
     }
 }
 
