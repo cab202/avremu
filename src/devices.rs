@@ -17,6 +17,7 @@ pub enum DeviceType {
     ATtiny1626
 }
 
+#[allow(non_snake_case)]
 pub struct Device {
     pub core: Core,
     pub flash: Rc<RefCell<dyn MemoryMapped>>,
