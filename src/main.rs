@@ -20,7 +20,12 @@ fn main() {
     println!("[FIRMWARE] {}.", filename);
 
     mcu.load_hex(&filename);
-    //mcu.core.debug(true);
+
+    if args.len() > 3 {
+        if args[3].eq("debug") {
+            mcu.core.debug(true);
+        }
+    }
 
     let mut cycles = 0u64;
 
