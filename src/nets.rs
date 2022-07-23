@@ -1,5 +1,9 @@
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 
+pub type Pin = Rc<PinState>;
+
+#[derive(Debug)]
 pub enum PinState {
     Open,
     WeakPullDown,
@@ -11,6 +15,7 @@ pub enum PinState {
     UndefinedStrong
 }
 
+#[derive(Debug)]
 pub enum NetState {
     Undefined,
     High,
@@ -19,16 +24,32 @@ pub enum NetState {
 }
 
 pub struct Net {
-    state: NetState,
-    io: Vec<Rc<PinState>>
+    pub state: NetState,
+    io: Vec<Weak<RefCell<PinState>>>
 }
 
 impl Net {
-    fn update(&mut self) {
+    pub fn new() -> Self {
+        Net { 
+            state: NetState::Undefined, 
+            io: Vec::new()
+        }
+    }
+
+    pub fn connect(&mut self, pin: Weak<RefCell<PinState>>) {
+        self.io.push(pin);
+    }
+
+    pub fn update(&mut self) {
         let mut dps = PinState::Open;
 
+        //println!("Updating net...");
+
         for ps in &self.io {
-            match **ps {
+
+            //println!("Pinstate is {:?}", *ps.upgrade().unwrap().borrow());
+
+            match *ps.upgrade().unwrap().borrow() {
                 PinState::Open => {},
                 PinState::WeakPullDown => {
                     match dps {
@@ -72,6 +93,8 @@ impl Net {
                 },
                 PinState::UndefinedStrong => break  // We shouldn't ever get here
             }
+
+            //println!("New dominant pinstate is {:?}", dps);
         }
 
         match dps {
@@ -80,5 +103,9 @@ impl Net {
             PinState::WeakPullUp | PinState::DriveH => self.state = NetState::High,
             PinState::DriveAnalog(v) => self.state = NetState::Analog(v),      
         }
+
+        println!("New net state is {:?}", self.state);
+
+
     }
 }
