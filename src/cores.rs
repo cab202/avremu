@@ -1427,7 +1427,7 @@ impl Instruction {
             "1001_010d_dddd_0110" => Instruction::LSR { Rd: d as u8 },
             "0010_11rd_dddd_rrrr" => Instruction::MOV { Rd: d as u8, Rr: r as u8 },
             "0000_0001_dddd_rrrr" => Instruction::MOVW { Rd: (d as u8) << 1, Rr: (r as u8) << 1 },
-            "1001_11rd_dddd_rrrr" => Instruction::MUL { Rd: d as u8 + 16, Rr: r as u8 + 16 },
+            "1001_11rd_dddd_rrrr" => Instruction::MUL { Rd: d as u8, Rr: r as u8 },
             "0000_0010_dddd_rrrr" => Instruction::MULS { Rd: d as u8 + 16, Rr: r as u8 + 16 },
             "0000_0011_0ddd_0rrr" => Instruction::MULSU { Rd: d as u8 + 16, Rr: r as u8 + 16 },
             "1001_010d_dddd_0001" => Instruction::NEG { Rd: d as u8 },
