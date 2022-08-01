@@ -122,19 +122,14 @@ impl Core {
         let mut C = self.get_sreg_bit(BitSREG::C);
         let mut r: u8;
 
+        let C1;
+        let mut C2 = false;
+
+        (r, C1) = rd.overflowing_add(rr);
         if C {
-            (r, C) = rd.overflowing_add(1);
-            if C {
-                // We overflowed so cant overflow again
-                r += rr;
-            } else {
-                // We could still overflow
-                (r, C) = rd.overflowing_add(rr);
-            }
-        } else {
-            // Carry bit is not set, normal overflowing add
-            (r, C) = rd.overflowing_add(rr);
+            (r, C2) = r.overflowing_add(1);
         }
+        C = C1 | C2;
 
         self.set_r(Rd, r);
 
@@ -499,19 +494,14 @@ impl Core {
         let mut C = self.get_sreg_bit(BitSREG::C);
         let mut r: u8;
 
+        let C1;
+        let mut C2 = false;
+
+        (r, C1) = rd.overflowing_sub(rr);
         if C {
-            (r, C) = rd.overflowing_sub(1);
-            if C {
-                // We overflowed so cant overflow again
-                r -= rr;
-            } else {
-                // We could still overflow
-                (r, C) = rd.overflowing_sub(rr);
-            }
-        } else {
-            // Carry bit is not set, normal overflowing add
-            (r, C) = rd.overflowing_sub(rr);
+            (r, C2) = r.overflowing_sub(1);
         }
+        C = C1 | C2;
 
         self.set_r(Rd, r);
 
@@ -540,19 +530,14 @@ impl Core {
         let mut C = self.get_sreg_bit(BitSREG::C);
         let mut r: u8;
 
+        let C1;
+        let mut C2 = false;
+
+        (r, C1) = rd.overflowing_sub(val);
         if C {
-            (r, C) = rd.overflowing_sub(1);
-            if C {
-                // We overflowed so cant overflow again
-                r -= val;
-            } else {
-                // We could still overflow
-                (r, C) = rd.overflowing_sub(val);
-            }
-        } else {
-            // Carry bit is not set, normal overflowing add
-            (r, C) = rd.overflowing_sub(val);
+            (r, C2) = r.overflowing_sub(1);
         }
+        C = C1 | C2;
 
         self.set_r(Rd, r);
 
@@ -706,19 +691,14 @@ impl Core {
         let mut C = self.get_sreg_bit(BitSREG::C);
         let Z = self.get_sreg_bit(BitSREG::Z);
 
+        let C1;
+        let mut C2 = false;
+
+        (r, C1) = rd.overflowing_sub(rr);
         if C {
-            (r, C) = rd.overflowing_sub(1);
-            if C {
-                // We overflowed so cant overflow again
-                r -= rr;
-            } else {
-                // We could still overflow
-                (r, C) = r.overflowing_sub(rr);
-            }
-        } else {
-            // Carry bit is not set, normal overflowing sub
-            (r, C) = rd.overflowing_sub(rr);
+            (r, C2) = r.overflowing_sub(1);
         }
+        C = C1 | C2;
 
         let br = r.view_bits::<Lsb0>();
         let brd = rd.view_bits::<Lsb0>();
@@ -957,16 +937,22 @@ impl Core {
     
     #[allow(non_snake_case)]
     fn rol(&mut self, Rd: u8) {
-        let vRd = self.get_r(Rd);
-        let vR = vRd.rotate_left(1);
-        self.set_r(Rd, vR);  
+        let rd = self.get_r(Rd);
+        let C = self.get_sreg_bit(BitSREG::C);
+        
+        let mut r = rd << 1;
+        if C {
+            r |= 0x01;
+        }
 
-        let C = vRd.view_bits::<Msb0>()[0];
-        let Z = vR == 0;
-        let N = vR.view_bits::<Msb0>()[0];
+        self.set_r(Rd, r);  
+
+        let C = rd.view_bits::<Lsb0>()[7];
+        let Z = r == 0;
+        let N = r.view_bits::<Lsb0>()[7];
         let V = N ^ C;
         let S = N ^ V;
-        let H = vRd.view_bits::<Lsb0>()[3];
+        let H = rd.view_bits::<Lsb0>()[3];
         
         self.set_sreg_bit(BitSREG::C, C);
         self.set_sreg_bit(BitSREG::Z, Z);
@@ -978,13 +964,19 @@ impl Core {
     
     #[allow(non_snake_case)]
     fn ror(&mut self, Rd: u8) {
-        let vRd = self.get_r(Rd);
-        let vR = vRd.rotate_right(1);
-        self.set_r(Rd, vR);  
+        let rd = self.get_r(Rd);
+        let C = self.get_sreg_bit(BitSREG::C);
 
-        let C = vRd.view_bits::<Lsb0>()[0];
-        let Z = vR == 0;
-        let N = vR.view_bits::<Lsb0>()[7];
+        let mut r = rd >> 1;
+        if C {
+            r |= 0x80;
+        }
+
+        self.set_r(Rd, r);  
+
+        let C = rd.view_bits::<Lsb0>()[0];
+        let Z = r == 0;
+        let N = r.view_bits::<Lsb0>()[7];
         let V = N ^ C;
         let S = N ^ V;
         
