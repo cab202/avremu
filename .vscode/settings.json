@@ -1,3 +1,3 @@
 {
-    "rust-analyzer.runnables.cargoExtraArgs": ["E:\\git\\bitbucket\\cab202\\week02\\extension\\exemplar\\.pio\\build\\QUTy\\firmware.hex", "1050", "debug"]
+    "rust-analyzer.runnables.cargoExtraArgs": ["D:\\firmware.hex", "1050", "debug"]
 }

@@ -16,6 +16,7 @@ pub enum PinState {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum NetState {
     Undefined,
     High,
@@ -25,14 +26,16 @@ pub enum NetState {
 
 pub struct Net {
     pub state: NetState,
-    io: Vec<Weak<RefCell<PinState>>>
+    io: Vec<Weak<RefCell<PinState>>>,
+    name: String
 }
 
 impl Net {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         Net { 
             state: NetState::Undefined, 
-            io: Vec::new()
+            io: Vec::new(), 
+            name
         }
     }
 
@@ -97,14 +100,20 @@ impl Net {
             //println!("New dominant pinstate is {:?}", dps);
         }
 
+        let state_new;
         match dps {
-            PinState::Open | PinState::UndefinedWeak |  PinState::UndefinedStrong => self.state = NetState::Undefined,
-            PinState::WeakPullDown | PinState::DriveL => self.state = NetState::Low,
-            PinState::WeakPullUp | PinState::DriveH => self.state = NetState::High,
-            PinState::DriveAnalog(v) => self.state = NetState::Analog(v),      
+            PinState::Open | PinState::UndefinedWeak |  PinState::UndefinedStrong => state_new = NetState::Undefined,
+            PinState::WeakPullDown | PinState::DriveL => state_new = NetState::Low,
+            PinState::WeakPullUp | PinState::DriveH => state_new = NetState::High,
+            PinState::DriveAnalog(v) => state_new = NetState::Analog(v),      
         }
 
-        println!("New net state is {:?}", self.state);
+        if self.state != state_new {
+            println!("Net {}: {:?} => {:?}", self.name, self.state, state_new);
+        }
+        self.state = state_new;
+
+        
 
 
     }

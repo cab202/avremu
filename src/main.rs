@@ -8,11 +8,14 @@ mod memory;
 mod peripherals;
 mod nets;
 mod hardware;
+mod boards;
 
 use crate::devices::Device;
 use crate::devices::DeviceType;
 use crate::nets::{Net, PinState};
 use crate::hardware::led::Led;
+use crate::boards::quty::QUTy;
+
 
 fn main() {
 
@@ -49,15 +52,14 @@ fn main() {
     let filename = &args[1];
     let cycle_limit: u64 = args[2].parse().unwrap();
 
-    let mut mcu = Device::new(DeviceType::ATtiny1626);
-
     println!("[FIRMWARE] {}.", filename);
 
-    mcu.load_hex(&filename);
-
+    let mut quty = QUTy::new();
+    quty.mcu_programme(filename);
+    
     if args.len() > 3 {
         if args[3].eq("debug") {
-            mcu.core.debug(true);
+            quty.core_debug();
         }
     }
 
@@ -65,7 +67,7 @@ fn main() {
 
     println!("[RUN] Cycle limit is {}.", cycle_limit);
 
-    while mcu.tick() {
+    while quty.step() {
          //Run until break
          cycles += 1;
          if cycles == cycle_limit {
@@ -76,7 +78,7 @@ fn main() {
 
     println!("[INFO] Programme terminated after {} cycles.", cycles);
 
-    mcu.dump_stack();
-    mcu.dump_regs();
+    quty.mcu_dumpstack();
+    quty.core_dumpregs();
     
 }

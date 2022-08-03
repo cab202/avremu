@@ -1,7 +1,9 @@
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
+use super::Hardware;
 use crate::nets::{PinState, Pin, Net, NetState};
+
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -33,11 +35,13 @@ impl Led {
             active_high
         };
         led.net.borrow_mut().connect(Rc::downgrade(&led.pin));
-        led.update();
+        led.update(0);
         led
     }
+}
 
-    pub fn update(&mut self) {
+impl Hardware for Led {
+    fn update(&mut self, time: usize) {
         let new_state: LedState;
         match self.net.borrow().state {
             NetState::High => if self.active_high {new_state = LedState::On} else {new_state = LedState::Off},
@@ -45,8 +49,12 @@ impl Led {
             _ => new_state = LedState::Undefined
         }
         if !self.state.eq(&new_state) {
-            println!("[HW] LED${}: {:?}", self.name, new_state);
+            println!("[@{:08X}] LED${}: {:?}", time, self.name, new_state);
             self.state = new_state;
-        }
+        } 
+    }
+
+    fn get_pin(&self, _name: String) -> Weak<RefCell<PinState>> {
+        Rc::downgrade(&self.pin)
     }
 }
