@@ -1,5 +1,9 @@
-use super::super::nets::{Net, NetState, PinState};
-use super::super::memory::MemoryMapped;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+use crate::hardware::Hardware;
+use crate::nets::{Net, NetState, PinState};
+use crate::memory::MemoryMapped;
 use super::Clocked;
 
 
@@ -49,54 +53,106 @@ impl ISC {
 }
 
 struct PortIO {
-    pin: PinState,
+    pin: Rc<RefCell<PinState>>,
+    net: Rc<RefCell<Net>>,
     dir: bool,
     out: bool, 
     pullup_en: bool, 
     invert_en: bool,
     input_dis: bool,
-    isc: ISC
-    //peripheral_overrides
+    isc: ISC,
+    po_out: bool,
+    po_out_val: bool
     //interrupt sink
     //analog sink
     //pin state
 }
 
 impl PortIO {
+    fn new() -> Self {
+        PortIO { 
+            pin: Rc::new(RefCell::new(PinState::Open)), 
+            net: Rc::new(RefCell::new(Net::new("".to_string()))), 
+            dir: false, 
+            out: false, 
+            pullup_en: false, 
+            invert_en: false, 
+            input_dis: false, 
+            isc: ISC::INTDISABLE,
+            po_out: false,
+            po_out_val: false 
+        }
+    }
+
     fn update_pinstate(&mut self) {
         if self.dir {
             // driven
-            if (self.out) {
-                self.pin = PinState::DriveH;
+            if self.po_out {
+                if self.po_out_val {
+                    *self.pin.borrow_mut() = PinState::DriveH;
+                } else {
+                    *self.pin.borrow_mut() = PinState::DriveL;
+                }
+            } else if self.out {
+                *self.pin.borrow_mut() = PinState::DriveH;
             } else {
-                self.pin = PinState::DriveL;
+                *self.pin.borrow_mut() = PinState::DriveL;
             }
         } else {
             // not driven
             if self.pullup_en {
-                self.pin = PinState::WeakPullUp;
+                *self.pin.borrow_mut() = PinState::WeakPullUp;
             } else {
-                self.pin = PinState::Open;
+                *self.pin.borrow_mut() = PinState::Open;
             }
         }
     }
+
+    fn connect(&mut self, net: Rc<RefCell<Net>>) {
+        self.net = net;
+        self.net.borrow_mut().connect(Rc::downgrade(&self.pin));
+    }
 }
 
-struct Port {
+pub struct Port {
+    name: String,
     pio: [PortIO; 8],
     regs: [u8; 0x18]
 }
 
 impl Port {
+    pub fn new(name: String) -> Self {
+        Port {
+            name,
+            pio: [
+                PortIO::new(),
+                PortIO::new(),
+                PortIO::new(),
+                PortIO::new(),
+                PortIO::new(),
+                PortIO::new(),
+                PortIO::new(),
+                PortIO::new()
+            ],
+            regs: [0u8; 0x18]
+        }
+    }
+
+    pub fn connect(&mut self, pinIndex: u8, net: Rc<RefCell<Net>>) {
+        self.pio[usize::from(pinIndex)].connect(net);
+    }
+
     fn update_dir(&mut self) {
         for i in 0..8usize {
             self.pio[i].dir = self.regs[PORT_DIR] & (1 << i) != 0;
+            self.pio[i].update_pinstate();
         }
     }
 
     fn update_out(&mut self) {
         for i in 0..8usize {
             self.pio[i].out = self.regs[PORT_OUT] & (1 << i) != 0;
+            self.pio[i].update_pinstate();
         }
     }
 
@@ -107,6 +163,18 @@ impl Port {
         if let ISC::INPUTDISABLE = self.pio[n].isc {
             self.pio[n].input_dis = true;
         }
+        self.pio[n].update_pinstate();
+    }
+
+    pub fn po_out(&mut self, pinIndex: u8, state: bool) {
+        self.pio[usize::from(pinIndex)].po_out_val = state;
+        self.pio[usize::from(pinIndex)].po_out = true; 
+        self.pio[usize::from(pinIndex)].update_pinstate();  
+    }
+
+    pub fn po_out_clear(&mut self, pinIndex: u8) {
+        self.pio[usize::from(pinIndex)].po_out = false;
+        self.pio[usize::from(pinIndex)].update_pinstate();   
     }
 }
 
@@ -151,3 +219,51 @@ impl Clocked for Port {
 
     }
 }
+
+impl Hardware for Port {
+    fn update(&mut self, _time: usize) {
+        for i in 0..8 {
+            match self.pio[i].net.borrow().state {
+                NetState::High => self.regs[PORT_IN] |= 1u8 << i,
+                NetState::Low => self.regs[PORT_IN] &= !(1u8 << i),
+                _ => {} //do nothing if undefined
+            }
+        }
+    }
+}
+
+pub struct VirtualPort {
+    pub port: Rc<RefCell<Port>>
+}
+
+impl MemoryMapped for VirtualPort {
+    fn get_size(&self) -> usize {
+        4
+    }
+
+    fn read(&self, address: usize) -> (u8, usize) {
+        self.port.borrow().read(
+            match address {
+                0x00 => 0x00,
+                0x01 => 0x04,
+                0x02 => 0x08,
+                0x03 => 0x09,
+                _ => 0x0B
+            }
+        )    
+    }
+
+    fn write(&mut self, address: usize, value: u8) -> usize {
+        self.port.borrow_mut().write(
+            match address {
+                0x00 => 0x00,
+                0x01 => 0x04,
+                0x02 => 0x08,
+                0x03 => 0x09,
+                _ => 0x0B
+            }, 
+            value
+        ) 
+    }
+}
+

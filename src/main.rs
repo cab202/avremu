@@ -1,6 +1,4 @@
 use std::env;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 mod devices;
 mod cores;
@@ -9,56 +7,30 @@ mod peripherals;
 mod nets;
 mod hardware;
 mod boards;
+mod events;
 
-use crate::devices::Device;
-use crate::devices::DeviceType;
-use crate::nets::{Net, PinState};
-use crate::hardware::led::Led;
 use crate::boards::quty::QUTy;
-
+use crate::events::Event;
 
 fn main() {
 
-    //let pin = Rc::new(RefCell::new(PinState::Open));
-    //let net = Rc::new(RefCell::new(Net::new()));
-    //let mut led = Led::new("TEST".to_string(), true, Rc::clone(&net));
-    //net.borrow_mut().connect(Rc::downgrade(&pin));
-    //
-    //net.borrow_mut().update();
-    //led.update();
-//
-    //*pin.borrow_mut() = PinState::DriveH;
-    //net.borrow_mut().update();
-    //led.update();
-//
-    //*pin.borrow_mut() = PinState::DriveL;
-    //net.borrow_mut().update();
-    //led.update();
-//
-    //*pin.borrow_mut() = PinState::WeakPullDown;
-    //net.borrow_mut().update();
-    //led.update();
-//
-    //*pin.borrow_mut() = PinState::Open;
-    //net.borrow_mut().update();
-    //led.update();
-//
-    //*pin.borrow_mut() = PinState::WeakPullUp;
-    //net.borrow_mut().update();
-    //led.update();
-
     let args: Vec<String> = env::args().collect();
     
-    let filename = &args[1];
-    let cycle_limit: u64 = args[2].parse().unwrap();
+    let filename_firmware = &args[1];
+    let filename_events = &args[2];
+    let cycle_limit: u64 = args[3].parse().unwrap();
 
-    println!("[FIRMWARE] {}.", filename);
+    let events = Event::from_file(filename_events);
+
+    println!("[FIRMWARE] {}.", filename_firmware);
+    println!("[EVENTS] {}: Parsed {} events.", &filename_events, events.len());
 
     let mut quty = QUTy::new();
-    quty.mcu_programme(filename);
+    quty.events(events);
+    quty.mcu_programme(filename_firmware);
     
-    if args.len() > 3 {
-        if args[3].eq("debug") {
+    if args.len() > 4 {
+        if args[4].eq("debug") {
             quty.core_debug();
         }
     }

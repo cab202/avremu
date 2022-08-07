@@ -52,7 +52,7 @@ impl MemoryMap {
             }
         }) {
             Ok(idx) => {Ok((self.mm[idx].1.borrow_mut(), address-self.mm[idx].0))},
-            Err(..) => {Err("Attempt to access undefined region of memory map.".to_string())}
+            Err(..) => {Err(format!("Attempt to access undefined region of memory map: 0x{:04X}.", address))}
         }
         //println!("get_dev: Found a device at 0x{:04X}, idx = {}", self.mm[idx].0, idx);
     }

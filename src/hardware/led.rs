@@ -49,12 +49,12 @@ impl Hardware for Led {
             _ => new_state = LedState::Undefined
         }
         if !self.state.eq(&new_state) {
-            println!("[@{:08X}] LED${}: {:?}", time, self.name, new_state);
+            println!("[@{:08X}] LED|{}: {:?}", time, self.name, new_state);
             self.state = new_state;
         } 
     }
 
-    fn get_pin(&self, _name: String) -> Weak<RefCell<PinState>> {
-        Rc::downgrade(&self.pin)
-    }
+    //fn get_pin(&self, _name: String) -> Weak<RefCell<PinState>> {
+    //    Rc::downgrade(&self.pin)
+    //}
 }

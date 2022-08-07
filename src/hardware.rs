@@ -4,10 +4,14 @@ use std::rc::{Rc, Weak};
 use crate::nets::PinState;
 
 mod resistor;
-mod pushbutton;
+pub mod pushbutton;
 pub mod led;
+pub mod buzzer;
 
 pub trait Hardware {
     fn update(&mut self, time: usize);
-    fn get_pin(&self, name: String) -> Weak<RefCell<PinState>>;
+    fn event(&mut self, time: usize, event: &String) {
+
+    }
+    //fn get_pin(&self, name: String) -> Weak<RefCell<PinState>>;
 }

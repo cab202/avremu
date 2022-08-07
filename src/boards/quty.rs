@@ -7,16 +7,22 @@ use crate::devices::DeviceType;
 use crate::hardware::Hardware;
 use crate::nets::Net;
 use crate::hardware::led::Led;
+use crate::hardware::pushbutton::Pushbutton;
+use crate::hardware::buzzer::Buzzer;
+use crate::events::Events;
 
 pub struct QUTy {
     hw: HashMap<String, Box<dyn Hardware>>,
     nets: HashMap<String, Rc<RefCell<Net>>>,
     mcu: Device,
-    time: usize
+    time: usize,
+    events: Events
 }
 
 impl QUTy {
     pub fn new() -> Self {
+
+        let mcu = Device::new(DeviceType::ATtiny1626);
 
         let nets = HashMap::from([
             ("PA1_DISP_LATCH".to_string(), Rc::new(RefCell::new(Net::new("PA1_DISP_LATCH".to_string())))),
@@ -38,20 +44,72 @@ impl QUTy {
             ("PC3_SPI_CS".to_string(), Rc::new(RefCell::new(Net::new("PC3_SPI_CS".to_string()))))
         ]);
 
+        mcu.ports[0].borrow_mut().connect(1, Rc::clone(nets.get("PA1_DISP_LATCH").unwrap()));
+        mcu.ports[0].borrow_mut().connect(2, Rc::clone(nets.get("PA2_POT").unwrap()));
+        mcu.ports[0].borrow_mut().connect(3, Rc::clone(nets.get("PA3_CLK").unwrap()));
+        mcu.ports[0].borrow_mut().connect(4, Rc::clone(nets.get("PA4_BUTTON0").unwrap()));
+        mcu.ports[0].borrow_mut().connect(5, Rc::clone(nets.get("PA5_BUTTON1").unwrap()));
+        mcu.ports[0].borrow_mut().connect(6, Rc::clone(nets.get("PA6_BUTTON2").unwrap()));
+        mcu.ports[0].borrow_mut().connect(7, Rc::clone(nets.get("PA7_BUTTON3").unwrap()));
+
+        mcu.ports[1].borrow_mut().connect(0, Rc::clone(nets.get("PB0_BUZZER").unwrap()));
+        mcu.ports[1].borrow_mut().connect(1, Rc::clone(nets.get("PB1_DISP_EN").unwrap()));
+        mcu.ports[1].borrow_mut().connect(2, Rc::clone(nets.get("PB2_UART_TX").unwrap()));
+        mcu.ports[1].borrow_mut().connect(3, Rc::clone(nets.get("PB3_UART_RX").unwrap()));
+        mcu.ports[1].borrow_mut().connect(4, Rc::clone(nets.get("PB4_UART_RX").unwrap()));
+        mcu.ports[1].borrow_mut().connect(5, Rc::clone(nets.get("PB5_DISP_DP").unwrap()));
+ 
+        mcu.ports[2].borrow_mut().connect(0, Rc::clone(nets.get("PC0_SPI_CLK").unwrap()));
+        mcu.ports[2].borrow_mut().connect(1, Rc::clone(nets.get("PC1_SPI_MISO").unwrap()));
+        mcu.ports[2].borrow_mut().connect(2, Rc::clone(nets.get("PC2_SPI_MOSI").unwrap()));
+        mcu.ports[2].borrow_mut().connect(3, Rc::clone(nets.get("PC3_SPI_CS").unwrap()));
+
         let mut hw: HashMap::<String, Box<dyn Hardware>> = HashMap::new();
-        hw.insert("DS1-DP".to_string(), Box::new(Led::new("DS1-DP".to_string(), false, Rc::clone(nets.get("PB5_DISP_DP").unwrap()))));            
+        hw.insert("DS1-DP".to_string(), Box::new(Led::new("DS1-DP".to_string(), false, Rc::clone(nets.get("PB5_DISP_DP").unwrap()))));
+        hw.insert("S1".to_string(), Box::new(Pushbutton::new("S1".to_string(), false, Rc::clone(nets.get("PA4_BUTTON0").unwrap()))));
+        hw.insert("S2".to_string(), Box::new(Pushbutton::new("S2".to_string(), false, Rc::clone(nets.get("PA5_BUTTON1").unwrap()))));
+        hw.insert("S3".to_string(), Box::new(Pushbutton::new("S3".to_string(), false, Rc::clone(nets.get("PA6_BUTTON2").unwrap()))));
+        hw.insert("S4".to_string(), Box::new(Pushbutton::new("S4".to_string(), false, Rc::clone(nets.get("PA7_BUTTON3").unwrap()))));
+        hw.insert("P1".to_string(), Box::new(Buzzer::new("P1".to_string(), false, Rc::clone(nets.get("PB0_BUZZER").unwrap()))));
 
-
-        QUTy { 
+        let mut quty = QUTy { 
             hw, 
             nets, 
-            mcu: Device::new(DeviceType::ATtiny1626),
-            time: 0
+            mcu,
+            time: 0,
+            events: Vec::new()
+        };
+
+        for net in &quty.nets {
+            net.1.borrow_mut().update();
         }
+        for dev in &mut quty.hw {
+            dev.1.update(0);
+        }
+        quty.mcu.update(0);
+
+        quty  
     }
 
     pub fn step(&mut self) -> bool {
         self.time += 1;
+
+        match self.time % 16384 {
+            0 => self.mcu.ports[1].borrow_mut().po_out(0, true),
+            8192 => self.mcu.ports[1].borrow_mut().po_out(0, false),
+            _ => {}
+        }
+
+        if !self.events.is_empty() {
+            while self.time >= self.events[0].time {
+                self.hw.get_mut(&self.events[0].device).unwrap().event(self.time, &self.events[0].event);
+                self.events.remove(0);
+                if self.events.is_empty() {
+                    break;
+                }
+            }
+        }
+
         let result = self.mcu.tick();
         for net in &self.nets {
             net.1.borrow_mut().update();
@@ -59,6 +117,7 @@ impl QUTy {
         for hw in &mut self.hw {
             hw.1.update(self.time);
         }
+        self.mcu.update(self.time);
         result
     }
 
@@ -76,5 +135,9 @@ impl QUTy {
 
     pub fn mcu_programme(&mut self, filename: &String) {
         self.mcu.load_hex(filename);
+    }
+
+    pub fn events(&mut self, events: Events) {
+        self.events = events;
     }
 }

@@ -4,6 +4,9 @@ use super::memory::Memory;
 use super::memory::MemoryMap;
 use super::memory::MemoryMapped;
 
+use crate::hardware::Hardware;
+use crate::peripherals::port::{Port, VirtualPort};
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::fs::File;
@@ -23,6 +26,7 @@ pub struct Device {
     pub flash: Rc<RefCell<dyn MemoryMapped>>,
     pub sram: Rc<RefCell<dyn MemoryMapped>>,
     pub mm: Rc<RefCell<dyn MemoryMapped>>,
+    pub ports: Vec<Rc<RefCell<Port>>>,
     RAMEND: u16
 }
 
@@ -45,13 +49,29 @@ impl Device {
                 // Placeholder
                 let eeprom: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new_rom(vec![0x00; 256], 0)));  // Should this read 0xFF?
                 let userrow: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new_rom(vec![0x00; 0x80], 0))); // Should this read 0xFF?
+                let tca0: Rc<RefCell<dyn MemoryMapped>> =  Rc::new(RefCell::new(Memory::new(0x3B, 0x00, 0)));
+
+                //Ports
+                let porta = Rc::new(RefCell::new(Port::new("PORTA".to_string())));
+                let portb = Rc::new(RefCell::new(Port::new("PORTB".to_string()))); 
+                let portc = Rc::new(RefCell::new(Port::new("PORTC".to_string())));
+
+                let vporta = Rc::new(RefCell::new(VirtualPort{port: Rc::clone(&porta)}));
+                let vportb = Rc::new(RefCell::new(VirtualPort{port: Rc::clone(&portb)}));
+                let vportc = Rc::new(RefCell::new(VirtualPort{port: Rc::clone(&portc)}));
+                
+                let ports = vec![
+                    Rc::clone(&porta),
+                    Rc::clone(&portb),
+                    Rc::clone(&portc)
+                ];
                 
                 //TODO
                 let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));
                 let clkctrl: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x1D, 0x00, 0)));
-                let porta: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
-                let portb: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
-                let portc: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
+                //let porta: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
+                //let portb: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
+                //let portc: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
 
                 // Not implemented
                 let slpctrl: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new_rom(vec![0x00; 0x01], 0)));
@@ -63,9 +83,9 @@ impl Device {
 
 
                 let mut mm = MemoryMap::new();
-                //[0x0000] VPORTA 
-                //[0x0004] VPORTB 
-                //[0x0008] VPORTC 
+                mm.add(0x0000, vporta.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0000] VPORTA 
+                mm.add(0x0004, vportb.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0004] VPORTB 
+                mm.add(0x0008, vportc.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0008] VPORTC 
                 mm.add(0x001C, Rc::clone(&gpio));       //[0x001C] GPIO (DONE)
                 mm.add(0x0030, Rc::clone(&cpu));        //[0x0030] CPU (TODO)
                 //[0x0040] RSTCTRL 
@@ -79,9 +99,9 @@ impl Device {
                 //[0x0140] RTC 
                 //[0x0180] EVSYS 
                 //[0x01C0] CCL 
-                mm.add(0x0400, Rc::clone(&porta));      //[0x0400] PORTA (TODO) 
-                mm.add(0x0420, Rc::clone(&portb));      //[0x0420] PORTB (TODO) 
-                mm.add(0x0440, Rc::clone(&portc));      //[0x0440] PORTC (TODO) 
+                mm.add(0x0400, porta.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0400] PORTA (partial) 
+                mm.add(0x0420, portb.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0420] PORTB (partial) 
+                mm.add(0x0440, portc.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0440] PORTC (partial) 
                 //[0x05E0] PORTMUX 
                 //[0x0600] ADC0 
                 mm.add(0x0680, Rc::clone(&ac0));        //[0x0680] AC0 (not implemented) 
@@ -89,7 +109,7 @@ impl Device {
                 //[0x0820] USART1 
                 mm.add(0x08A0, Rc::clone(&twi));        //[0x08A0] TWI0 (not implemented)
                 //[0x08C0] SPI0 
-                //[0x0A00] TCA0 
+                mm.add(0x0A00, Rc::clone(&tca0));       //[0x0A00] TCA0 (placeholder)
                 //[0x0A80] TCB0 
                 //[0x0A90] TCB1 
                 mm.add(0x0F00, Rc::clone(&syscfg));     //[0x0F00] SYSCFG (DONE)
@@ -113,6 +133,7 @@ impl Device {
                     flash: flash,
                     sram: sram,
                     mm: mm,
+                    ports: ports,
                     RAMEND
                 }
             }
@@ -154,6 +175,12 @@ impl Device {
 
     pub fn tick(&mut self) -> bool {
         self.core.tick()
+    }
+
+    pub fn update(&mut self, time: usize) {
+        for port in &self.ports {
+            port.borrow_mut().update(time);
+        }
     }
 
     pub fn dump_regs(&self) {
