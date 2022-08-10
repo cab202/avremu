@@ -1,8 +1,8 @@
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::cell::RefCell;
 
 use super::Hardware;
-use crate::nets::{PinState, Pin, Net, NetState};
+use crate::nets::{PinState, Net, NetState};
 
 
 #[derive(Debug)]
@@ -23,7 +23,7 @@ pub struct Buzzer {
 }
 
 impl Buzzer {
-    pub fn new(name: String, active_high: bool, net: Rc<RefCell<Net>>) -> Self {
+    pub fn new(name: String, net: Rc<RefCell<Net>>) -> Self {
         let mut buzzer = Buzzer { 
             name,
             pin: Rc::new(RefCell::new(PinState::WeakPullDown)),

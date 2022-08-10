@@ -1,8 +1,8 @@
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::cell::RefCell;
 
 use super::Hardware;
-use crate::nets::{PinState, Pin, Net, NetState};
+use crate::nets::{PinState, Net, NetState};
 
 
 #[derive(Debug)]

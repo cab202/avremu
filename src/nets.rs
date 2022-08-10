@@ -1,8 +1,6 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-pub type Pin = Rc<PinState>;
-
 #[derive(Debug)]
 pub enum PinState {
     Open,

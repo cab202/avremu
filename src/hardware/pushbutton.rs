@@ -1,4 +1,4 @@
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::cell::RefCell;
 
 use super::Hardware;
@@ -22,7 +22,7 @@ pub struct Pushbutton {
 
 impl Pushbutton {
     pub fn new(name: String, active_high: bool, net: Rc<RefCell<Net>>) -> Self {
-        let mut pb = Pushbutton { 
+        let pb = Pushbutton { 
             name,
             pin: Rc::new(RefCell::new(PinState::Open)),
             //net,
@@ -57,7 +57,7 @@ impl Pushbutton {
 }
 
 impl Hardware for Pushbutton {
-    fn update(&mut self, time: usize) {
+    fn update(&mut self, _time: usize) {
         //TODO: Add code for bounce
     }
 

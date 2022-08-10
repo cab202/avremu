@@ -138,8 +138,8 @@ impl Port {
         }
     }
 
-    pub fn connect(&mut self, pinIndex: u8, net: Rc<RefCell<Net>>) {
-        self.pio[usize::from(pinIndex)].connect(net);
+    pub fn connect(&mut self, pin_index: u8, net: Rc<RefCell<Net>>) {
+        self.pio[usize::from(pin_index)].connect(net);
     }
 
     fn update_dir(&mut self) {
@@ -166,15 +166,15 @@ impl Port {
         self.pio[n].update_pinstate();
     }
 
-    pub fn po_out(&mut self, pinIndex: u8, state: bool) {
-        self.pio[usize::from(pinIndex)].po_out_val = state;
-        self.pio[usize::from(pinIndex)].po_out = true; 
-        self.pio[usize::from(pinIndex)].update_pinstate();  
+    pub fn po_out(&mut self, pin_index: u8, state: bool) {
+        self.pio[usize::from(pin_index)].po_out_val = state;
+        self.pio[usize::from(pin_index)].po_out = true; 
+        self.pio[usize::from(pin_index)].update_pinstate();  
     }
 
-    pub fn po_out_clear(&mut self, pinIndex: u8) {
-        self.pio[usize::from(pinIndex)].po_out = false;
-        self.pio[usize::from(pinIndex)].update_pinstate();   
+    pub fn po_out_clear(&mut self, pin_index: u8) {
+        self.pio[usize::from(pin_index)].po_out = false;
+        self.pio[usize::from(pin_index)].update_pinstate();   
     }
 }
 
@@ -191,7 +191,7 @@ impl MemoryMapped for Port {
             PORT_INTFLAGS => (self.regs[PORT_INTFLAGS], 0),
             PORT_PORTCTRL => (self.regs[PORT_PORTCTRL] & 0x01, 0),
             PORT_PIN0CTRL..=PORT_PIN7CTRL => (self.regs[address] & 0x8F, 0),
-            _ => panic!("Attenpt to access invalid register in PORT peripheral.")
+            _ => panic!("Attempt to access invalid register in PORT peripheral.")
         }
     }
 
@@ -208,7 +208,7 @@ impl MemoryMapped for Port {
             PORT_INTFLAGS => {self.regs[PORT_INTFLAGS] &= !value},
             PORT_PORTCTRL => {self.regs[PORT_PORTCTRL] = value & 0x01},
             PORT_PIN0CTRL..=PORT_PIN7CTRL => {self.regs[address] = value & 0x8F; self.update_pinctrl(address-PORT_PIN0CTRL)},  
-            _ => panic!("Attenpt to access invalid register in PORT peripheral.")
+            _ => panic!("Attenmt to access invalid register in PORT peripheral.")
         }
         0
     }

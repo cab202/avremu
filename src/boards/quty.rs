@@ -9,7 +9,10 @@ use crate::nets::Net;
 use crate::hardware::led::Led;
 use crate::hardware::pushbutton::Pushbutton;
 use crate::hardware::buzzer::Buzzer;
+use crate::hardware::ic74hc595::IC74HC595;
+use crate::hardware::display::Display;
 use crate::events::Events;
+use crate::nets::NetState;
 
 pub struct QUTy {
     hw: HashMap<String, Box<dyn Hardware>>,
@@ -23,6 +26,12 @@ impl QUTy {
     pub fn new() -> Self {
 
         let mcu = Device::new(DeviceType::ATtiny1626);
+
+        let net_gnd = Rc::new(RefCell::new(Net::new("GND".to_string())));
+        let net_vdd = Rc::new(RefCell::new(Net::new("VDD".to_string())));
+
+        net_gnd.borrow_mut().state = NetState::Low;
+        net_vdd.borrow_mut().state = NetState::High;
 
         let nets = HashMap::from([
             ("PA1_DISP_LATCH".to_string(), Rc::new(RefCell::new(Net::new("PA1_DISP_LATCH".to_string())))),
@@ -41,7 +50,15 @@ impl QUTy {
             ("PC0_SPI_CLK".to_string(), Rc::new(RefCell::new(Net::new("PC0_SPI_CLK".to_string())))),
             ("PC1_SPI_MISO".to_string(), Rc::new(RefCell::new(Net::new("PC1_SPI_MISO".to_string())))),
             ("PC2_SPI_MOSI".to_string(), Rc::new(RefCell::new(Net::new("PC2_SPI_MOSI".to_string())))),
-            ("PC3_SPI_CS".to_string(), Rc::new(RefCell::new(Net::new("PC3_SPI_CS".to_string()))))
+            ("PC3_SPI_CS".to_string(), Rc::new(RefCell::new(Net::new("PC3_SPI_CS".to_string())))),
+            ("U2_Q0".to_string(), Rc::new(RefCell::new(Net::new("U2_Q0".to_string())))),
+            ("U2_Q1".to_string(), Rc::new(RefCell::new(Net::new("U2_Q1".to_string())))),
+            ("U2_Q2".to_string(), Rc::new(RefCell::new(Net::new("U2_Q2".to_string())))),
+            ("U2_Q3".to_string(), Rc::new(RefCell::new(Net::new("U2_Q3".to_string())))),
+            ("U2_Q4".to_string(), Rc::new(RefCell::new(Net::new("U2_Q4".to_string())))),
+            ("U2_Q5".to_string(), Rc::new(RefCell::new(Net::new("U2_Q5".to_string())))),
+            ("U2_Q6".to_string(), Rc::new(RefCell::new(Net::new("U2_Q6".to_string())))),
+            ("U2_Q7".to_string(), Rc::new(RefCell::new(Net::new("U2_Q7".to_string()))))
         ]);
 
         mcu.ports[0].borrow_mut().connect(1, Rc::clone(nets.get("PA1_DISP_LATCH").unwrap()));
@@ -64,13 +81,32 @@ impl QUTy {
         mcu.ports[2].borrow_mut().connect(2, Rc::clone(nets.get("PC2_SPI_MOSI").unwrap()));
         mcu.ports[2].borrow_mut().connect(3, Rc::clone(nets.get("PC3_SPI_CS").unwrap()));
 
+        let mut sr = IC74HC595::new("U2".to_string());
+        for i in 0..8 {
+            sr.connect_q(i, Rc::clone(nets.get(&format!("U2_Q{}",i)).unwrap()));
+        }
+        sr.connect("ds", Rc::clone(nets.get("PC2_SPI_MOSI").unwrap()));
+        sr.connect("shcp", Rc::clone(nets.get("PC0_SPI_CLK").unwrap()));
+        sr.connect("stcp", Rc::clone(nets.get("PA1_DISP_LATCH").unwrap()));
+        sr.connect("oe_n", Rc::clone(&net_gnd));
+        sr.connect("mr_n", Rc::clone(&net_vdd));
+
+        let mut disp = Display::new("DS1".to_string());
+        for i in 0..7 {
+            disp.connect_seg(i, Rc::clone(nets.get(&format!("U2_Q{}",i)).unwrap()));
+        }
+        disp.connect("en", Rc::clone(nets.get("PB1_DISP_EN").unwrap()));
+        disp.connect("digit", Rc::clone(nets.get("U2_Q7").unwrap()));
+
         let mut hw: HashMap::<String, Box<dyn Hardware>> = HashMap::new();
         hw.insert("DS1-DP".to_string(), Box::new(Led::new("DS1-DP".to_string(), false, Rc::clone(nets.get("PB5_DISP_DP").unwrap()))));
         hw.insert("S1".to_string(), Box::new(Pushbutton::new("S1".to_string(), false, Rc::clone(nets.get("PA4_BUTTON0").unwrap()))));
         hw.insert("S2".to_string(), Box::new(Pushbutton::new("S2".to_string(), false, Rc::clone(nets.get("PA5_BUTTON1").unwrap()))));
         hw.insert("S3".to_string(), Box::new(Pushbutton::new("S3".to_string(), false, Rc::clone(nets.get("PA6_BUTTON2").unwrap()))));
         hw.insert("S4".to_string(), Box::new(Pushbutton::new("S4".to_string(), false, Rc::clone(nets.get("PA7_BUTTON3").unwrap()))));
-        hw.insert("P1".to_string(), Box::new(Buzzer::new("P1".to_string(), false, Rc::clone(nets.get("PB0_BUZZER").unwrap()))));
+        hw.insert("P1".to_string(), Box::new(Buzzer::new("P1".to_string(), Rc::clone(nets.get("PB0_BUZZER").unwrap()))));
+        hw.insert("U2".to_string(), Box::new(sr));
+        hw.insert("DS1".to_string(), Box::new(disp));
 
         let mut quty = QUTy { 
             hw, 
