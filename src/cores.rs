@@ -69,19 +69,40 @@ impl Core {
     }
 
     fn get_ior(&self, ioreg: u8) -> u8 {
-        self.ds.borrow().read(usize::from(ioreg)).0
+        match ioreg {
+            0x3F => {self.sreg},                //CPU.SREG
+            0x3D => {(self.sp & 0xFF) as u8},   //CPU.SPL   //TODO: Implement correct 16-bit read
+            0x3E => {(self.sp >> 8) as u8},     //CPU.SPH
+            _ => self.ds.borrow().read(usize::from(ioreg)).0
+        }   
     }
 
     fn set_ior(&mut self, ioreg: u8, val: u8) {
-        self.ds.borrow_mut().write(usize::from(ioreg), val);
+        match ioreg {
+            0x3F => {self.sreg = val},                                      //CPU.SREG
+            0x3D => {self.sp = (self.sp & 0xFF00) | (val as u16)},          //CPU.SPL   //TODO: Implement correct 16-bit write
+            0x3E => {self.sp = (self.sp & 0x00FF) | ((val as u16) << 8)},   //CPU.SPH
+            _ => {self.ds.borrow_mut().write(usize::from(ioreg), val);}
+        }
     }
 
     fn get_ds(&self, address: u32) -> u8 {
-        self.ds.borrow().read(usize::try_from(address).unwrap()).0
+        match address {
+            0x0000003F => {self.sreg},                //CPU.SREG
+            0x0000003D => {(self.sp & 0xFF) as u8},   //CPU.SPL   //TODO: Implement correct 16-bit read
+            0x0000003E => {(self.sp >> 8) as u8},     //CPU.SPH
+            _ => self.ds.borrow().read(usize::try_from(address).unwrap()).0
+        }
     }
 
     fn set_ds(&mut self, address: u32, val: u8) {
-        self.ds.borrow_mut().write(usize::try_from(address).unwrap(), val);
+        match address {
+            0x0000003F => {self.sreg = val},                                    //CPU.SREG
+            0x0000003D => {self.sp = (self.sp & 0xFF00) | (val as u16)},        //CPU.SPL   //TODO: Implement correct 16-bit write
+            0x0000003E => {self.sp = (self.sp & 0x00FF) | ((val as u16) << 8)}, //CPU.SPH
+            _ => {self.ds.borrow_mut().write(usize::try_from(address).unwrap(), val);}
+        }
+        
     }
 
     fn get_ps(&self, address: u32) -> u8 {
@@ -819,7 +840,7 @@ impl Core {
     fn sbix(&mut self, ioreg: u8, bit: u8, set: bool) {
         use Instruction::*;
         
-        let bitval_n = (self.ds.borrow().read(usize::from(ioreg)).0 & (1<<bit)) == 0;
+        let bitval_n = (self.get_ior(ioreg) & (1<<bit)) == 0;
 
         if set ^ bitval_n {
             let opcode = self.get_progmem(self.pc as u32);
@@ -892,7 +913,12 @@ impl Core {
     }
     
     fn cbi(&mut self, ioreg: u8, bit: u8) {
-        self.ds.borrow_mut().set_bit(usize::from(ioreg), bit, false);
+        match ioreg {
+            0x3F => {self.sreg &= !(1u8 << bit)},      //CPU.SREG
+            0x3D => {self.sp &= !(1u16 << bit)},       //CPU.SPL
+            0x3E => {self.sp &= !(1u16 << (bit+8))},   //CPU.SPH
+            _ => {self.ds.borrow_mut().set_bit(usize::from(ioreg), bit, false);}
+        }        
     }
     
     #[allow(non_snake_case)]
@@ -988,7 +1014,13 @@ impl Core {
     }
     
     fn sbi(&mut self, ioreg: u8, bit: u8) {
-        self.ds.borrow_mut().set_bit(usize::from(ioreg), bit, true);
+        match ioreg {
+            0x3F => {self.sreg |= 1u8 << bit},      //CPU.SREG
+            0x3D => {self.sp |= 1u16 << bit},       //CPU.SPL
+            0x3E => {self.sp |= 1u16 << (bit+8)},   //CPU.SPH
+            _ => {self.ds.borrow_mut().set_bit(usize::from(ioreg), bit, true);}
+        }     
+        
     }
 
     #[allow(non_snake_case)]
