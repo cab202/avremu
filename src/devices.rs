@@ -5,7 +5,9 @@ use super::memory::MemoryMap;
 use super::memory::MemoryMapped;
 
 use crate::hardware::Hardware;
+use crate::peripherals::Clocked;
 use crate::peripherals::port::{Port, VirtualPort};
+use crate::peripherals::spi::Spi;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,6 +29,7 @@ pub struct Device {
     pub sram: Rc<RefCell<dyn MemoryMapped>>,
     pub mm: Rc<RefCell<dyn MemoryMapped>>,
     pub ports: Vec<Rc<RefCell<Port>>>,
+    clocked: Vec<Rc<RefCell<dyn Clocked>>>,
     RAMEND: u16
 }
 
@@ -64,6 +67,18 @@ impl Device {
                     Rc::clone(&porta),
                     Rc::clone(&portb),
                     Rc::clone(&portc)
+                ];
+
+                let spi0 = Rc::new(RefCell::new(Spi::new(
+                    "SPI0".to_string(), 
+                    Rc::clone(&porta), [1,2,3,4], 
+                    Rc::clone(&portc), [2,1,0,3]
+                )));
+                spi0.borrow_mut().mux_alt = true;
+
+
+                let clocked = vec![
+                    spi0.clone() as Rc<RefCell<dyn Clocked>>
                 ];
                 
                 //TODO
@@ -107,13 +122,13 @@ impl Device {
                 mm.add(0x0680, Rc::clone(&ac0));        //[0x0680] AC0 (not implemented) 
                 //[0x0800] USART0 
                 //[0x0820] USART1 
-                mm.add(0x08A0, Rc::clone(&twi));        //[0x08A0] TWI0 (not implemented)
-                //[0x08C0] SPI0 
-                mm.add(0x0A00, Rc::clone(&tca0));       //[0x0A00] TCA0 (placeholder)
+                mm.add(0x08A0, Rc::clone(&twi));                               //[0x08A0] TWI0 (not implemented)
+                mm.add(0x08C0, spi0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x08C0] SPI0 (partial)
+                mm.add(0x0A00, Rc::clone(&tca0));                              //[0x0A00] TCA0 (placeholder)
                 //[0x0A80] TCB0 
                 //[0x0A90] TCB1 
                 mm.add(0x0F00, Rc::clone(&syscfg));     //[0x0F00] SYSCFG (DONE)
-                mm.add(0x08A0, Rc::clone(&nvmctrl));    //[0x1000] NVMCTRL (not implemented) 
+                mm.add(0x1000, Rc::clone(&nvmctrl));    //[0x1000] NVMCTRL (not implemented) 
                 //[0x1100] SIGROW 
                 mm.add(0x1280, Rc::clone(&fuse));       //[0x1280] FUSE 
                 //[0x128A] LOCKBIT 
@@ -134,6 +149,7 @@ impl Device {
                     sram: sram,
                     mm: mm,
                     ports: ports,
+                    clocked: clocked,
                     RAMEND
                 }
             }
@@ -173,8 +189,14 @@ impl Device {
 
     }
 
-    pub fn tick(&mut self) -> bool {
-        self.core.tick()
+    pub fn tick(&mut self, time: usize) -> bool {
+        let result = self.core.tick();
+
+        for dev in &self.clocked {
+            dev.borrow_mut().tick(time);
+        }
+
+        result
     }
 
     pub fn update(&mut self, time: usize) {
@@ -193,7 +215,7 @@ impl Device {
         let mut sp = self.core.get_sp();
         while sp < self.RAMEND {
             sp += 1;
-            println!("[STACK+{:03X}] 0x{:02X}", self.RAMEND-sp, self.mm.borrow().read(usize::from(sp)).0)
+            println!("[STACK+{:03X}] 0x{:02X}", self.RAMEND-sp, self.mm.borrow_mut().read(usize::from(sp)).0)
         }
     }
 }

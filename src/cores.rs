@@ -73,7 +73,7 @@ impl Core {
             0x3F => {self.sreg},                //CPU.SREG
             0x3D => {(self.sp & 0xFF) as u8},   //CPU.SPL   //TODO: Implement correct 16-bit read
             0x3E => {(self.sp >> 8) as u8},     //CPU.SPH
-            _ => self.ds.borrow().read(usize::from(ioreg)).0
+            _ => self.ds.borrow_mut().read(usize::from(ioreg)).0
         }   
     }
 
@@ -91,7 +91,7 @@ impl Core {
             0x0000003F => {self.sreg},                //CPU.SREG
             0x0000003D => {(self.sp & 0xFF) as u8},   //CPU.SPL   //TODO: Implement correct 16-bit read
             0x0000003E => {(self.sp >> 8) as u8},     //CPU.SPH
-            _ => self.ds.borrow().read(usize::try_from(address).unwrap()).0
+            _ => self.ds.borrow_mut().read(usize::try_from(address).unwrap()).0
         }
     }
 
@@ -106,11 +106,11 @@ impl Core {
     }
 
     fn get_ps(&self, address: u32) -> u8 {
-        self.progmem.borrow().read(usize::try_from(address).unwrap()).0
+        self.progmem.borrow_mut().read(usize::try_from(address).unwrap()).0
     }
     
     fn get_progmem(&self, pc: u32) -> u16 {
-        self.progmem.borrow().read_word(usize::try_from(pc<<1).unwrap()).0
+        self.progmem.borrow_mut().read_word(usize::try_from(pc<<1).unwrap()).0
     }
 
     #[allow(dead_code)]
@@ -813,7 +813,7 @@ impl Core {
     fn ret(&mut self) {
         self.busy = 3; // 16-bit PC, not AVRrc
 
-        let ds = self.ds.borrow();
+        let mut ds = self.ds.borrow_mut();
         self.sp += 1; let (bh, _) = ds.read(usize::from(self.sp)); 
         self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
         self.pc = ((bh as u16) << 8) | (bl as u16);
@@ -822,7 +822,7 @@ impl Core {
     fn reti(&mut self) {
         self.busy = 3; // 16-bit PC, not AVRrc
 
-        let ds = self.ds.borrow();
+        let mut ds = self.ds.borrow_mut();
         self.sp += 1; let (bh, _) = ds.read(usize::from(self.sp)); 
         self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
         self.pc = ((bh as u16) << 8) | (bl as u16);

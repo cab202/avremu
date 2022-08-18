@@ -1,10 +1,13 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use bitvec::view::BitView;
+
 use crate::hardware::Hardware;
 use crate::nets::{Net, NetState, PinState};
 use crate::memory::MemoryMapped;
-use super::Clocked;
+
+use bitvec::prelude::*;
 
 
 const PORT_DIR:     usize = 0x00;
@@ -62,7 +65,9 @@ struct PortIO {
     input_dis: bool,
     isc: ISC,
     po_out: bool,
-    po_out_val: bool
+    po_out_val: bool,
+    po_dir: bool,
+    po_dir_val: bool
     //interrupt sink
     //analog sink
     //pin state
@@ -80,12 +85,14 @@ impl PortIO {
             input_dis: false, 
             isc: ISC::INTDISABLE,
             po_out: false,
-            po_out_val: false 
+            po_out_val: false,
+            po_dir: false,
+            po_dir_val: false 
         }
     }
 
     fn update_pinstate(&mut self) {
-        if self.dir {
+        if self.dir | (self.po_dir & self.po_dir_val) {
             // driven
             if self.po_out {
                 if self.po_out_val {
@@ -176,6 +183,21 @@ impl Port {
         self.pio[usize::from(pin_index)].po_out = false;
         self.pio[usize::from(pin_index)].update_pinstate();   
     }
+
+    pub fn po_dir(&mut self, pin_index: u8, state: bool) {
+        self.pio[usize::from(pin_index)].po_dir_val = state;
+        self.pio[usize::from(pin_index)].po_dir = true; 
+        self.pio[usize::from(pin_index)].update_pinstate();  
+    }
+
+    pub fn po_dir_clear(&mut self, pin_index: u8) {
+        self.pio[usize::from(pin_index)].po_dir = false;
+        self.pio[usize::from(pin_index)].update_pinstate();   
+    }
+
+    pub fn get_pinstate(&self, pin_index: u8) -> bool {
+        self.regs[PORT_IN].view_bits::<Lsb0>()[usize::from(pin_index)]
+    }
 }
 
 impl MemoryMapped for Port {
@@ -183,7 +205,7 @@ impl MemoryMapped for Port {
         0x18    
     }
 
-    fn read(&self, address: usize) -> (u8, usize) {
+    fn read(&mut self, address: usize) -> (u8, usize) {
         match address {
             PORT_DIR..=PORT_DIRTGL => (self.regs[PORT_DIR], 0),
             PORT_OUT..=PORT_OUTTGL => (self.regs[PORT_OUT], 0),
@@ -214,12 +236,6 @@ impl MemoryMapped for Port {
     }
 }
 
-impl Clocked for Port {
-    fn tick() {
-
-    }
-}
-
 impl Hardware for Port {
     fn update(&mut self, _time: usize) {
         for i in 0..8 {
@@ -241,8 +257,8 @@ impl MemoryMapped for VirtualPort {
         4
     }
 
-    fn read(&self, address: usize) -> (u8, usize) {
-        self.port.borrow().read(
+    fn read(&mut self, address: usize) -> (u8, usize) {
+        self.port.borrow_mut().read(
             match address {
                 0x00 => 0x00,
                 0x01 => 0x04,

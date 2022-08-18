@@ -4,9 +4,9 @@ use std::rc::Rc;
 
 pub trait MemoryMapped {
     fn get_size(&self) -> usize;
-    fn read(&self, address: usize) -> (u8, usize);
+    fn read(&mut self, address: usize) -> (u8, usize);
     fn write(&mut self, address: usize, value: u8) -> usize;
-    fn read_word(&self, address: usize) -> (u16, usize) {
+    fn read_word(&mut self, address: usize) -> (u16, usize) {
         let (bl, ll) =  self.read(address);
         let (bh, lh) =  self.read(address+1);
         (((bh as u16) << 8) | (bl as u16), ll+lh)
@@ -63,9 +63,9 @@ impl MemoryMapped for MemoryMap {
         self.mm.len()
     }
 
-    fn read(&self, address: usize) -> (u8, usize) {
+    fn read(&mut self, address: usize) -> (u8, usize) {
         match self.get_dev(address) {
-            Ok((dev, offset)) => dev.read(offset),
+            Ok((mut dev, offset)) => dev.read(offset),
             Err(error) => { println!("[ERROR] {}", error); (0, 0) }
         }     
     }
@@ -109,7 +109,7 @@ impl MemoryMapped for Memory {
         self.mem.len()
     }
 
-    fn read(&self, address: usize) -> (u8, usize) {
+    fn read(&mut self, address: usize) -> (u8, usize) {
         (self.mem[address], self.lat)
     }
 

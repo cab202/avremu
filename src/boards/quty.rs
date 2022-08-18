@@ -146,7 +146,7 @@ impl QUTy {
             }
         }
 
-        let result = self.mcu.tick();
+        let result = self.mcu.tick(self.time);
         for net in &self.nets {
             net.1.borrow_mut().update();
         }
