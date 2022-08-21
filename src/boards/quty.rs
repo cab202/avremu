@@ -173,6 +173,10 @@ impl QUTy {
         self.mcu.load_hex(filename);
     }
 
+    pub fn mcu_write_stdout(&self) {
+        self.mcu.stdio.borrow().out_close();
+    }
+
     pub fn events(&mut self, events: Events) {
         self.events = events;
     }

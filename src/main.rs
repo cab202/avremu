@@ -52,5 +52,6 @@ fn main() {
 
     quty.mcu_dumpstack();
     quty.core_dumpregs();
+    quty.mcu_write_stdout();
     
 }

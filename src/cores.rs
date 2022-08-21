@@ -71,8 +71,14 @@ impl Core {
     fn get_ior(&self, ioreg: u8) -> u8 {
         match ioreg {
             0x3F => {self.sreg},                //CPU.SREG
-            0x3D => {(self.sp & 0xFF) as u8},   //CPU.SPL   //TODO: Implement correct 16-bit read
-            0x3E => {(self.sp >> 8) as u8},     //CPU.SPH
+            0x3D => {
+                //println!("[DEBUG] SP = {:04X}, ret = {:02X}", self.sp, (self.sp & 0xFF) as u8);
+                (self.sp & 0xFF) as u8
+            },   //CPU.SPL   //TODO: Implement correct 16-bit read
+            0x3E => {
+                //println!("[DEBUG] SP = {:04X}, ret = {:02X}", self.sp, (self.sp >> 8) as u8);
+                (self.sp >> 8) as u8
+            },     //CPU.SPH
             _ => self.ds.borrow_mut().read(usize::from(ioreg)).0
         }   
     }
@@ -84,6 +90,7 @@ impl Core {
             0x3E => {self.sp = (self.sp & 0x00FF) | ((val as u16) << 8)},   //CPU.SPH
             _ => {self.ds.borrow_mut().write(usize::from(ioreg), val);}
         }
+        //println!("[DEBUG] val = {:02X}, SP = {:04X}", val, self.sp);
     }
 
     fn get_ds(&self, address: u32) -> u8 {
@@ -515,6 +522,8 @@ impl Core {
         let mut C = self.get_sreg_bit(BitSREG::C);
         let mut r: u8;
 
+        //println!("[DEBUG] sbc, Rd = {}, Rr = {}", rd, rr);
+
         let C1;
         let mut C2 = false;
 
@@ -611,7 +620,11 @@ impl Core {
         let rd = self.get_r(Rd); 
         let rr = self.get_r(Rr); 
 
+        //println!("[DEBUG] sub, Rd = {}, Rr = {}", rd, rr);
+
         let (r, C) = rd.overflowing_sub(rr);
+
+        self.set_r(Rd, r);
 
         let brd = rd.view_bits::<Lsb0>();
         let brr = rr.view_bits::<Lsb0>();
@@ -641,6 +654,8 @@ impl Core {
         let brd = rd.view_bits::<Lsb0>();
         let brr = val.view_bits::<Lsb0>();
         let br = r.view_bits::<Lsb0>();
+
+        self.set_r(Rd, r);
 
         let Z = r == 0;
         let N = br[7];
@@ -769,7 +784,10 @@ impl Core {
     fn cpse(&mut self, Rd: u8, Rr: u8) {
         use Instruction::*;
 
-        if Rd == Rr {
+        let rd = self.get_r(Rd);
+        let rr = self.get_r(Rr);
+        
+        if rd == rr {
             let opcode = self.get_progmem(self.pc as u32);
             let prefetch = self.get_progmem((self.pc + 1) as u32);
             let op = Instruction::decode(opcode, prefetch);
@@ -1044,7 +1062,14 @@ impl Core {
             self.set_rw(Rp, address)
         }
 
-        self.set_r(Rd, self.get_ds((address as u32) + (offset as u32)));
+        if (address as u32) + (offset as u32) < 0x40 {
+            self.set_r(Rd, self.get_ior(((address as u32) + (offset as u32)) as u8));
+        } else {
+            self.set_r(Rd, self.get_ds((address as u32) + (offset as u32)));
+        }
+        
+
+        //println!("[DEBUG] R{} <= DS(0x{:04X}) (0x{:04X})", Rd, (address as u32) + (offset as u32), self.get_ds((address as u32) + (offset as u32)));
 
         if inc {
             address = address.wrapping_add(1);
@@ -1063,7 +1088,13 @@ impl Core {
             self.set_rw(Rp, address)
         }
 
-        self.set_ds((address as u32) + (offset as u32), self.get_r(Rr));
+        if (address as u32) + (offset as u32) < 0x40 {
+            self.set_ior(((address as u32) + (offset as u32)) as u8, self.get_r(Rr));
+        } else {
+            self.set_ds((address as u32) + (offset as u32), self.get_r(Rr));
+        }
+
+        //println!("[DEBUG] DS(0x{:04X}) <= R{} (0x{:04X})", (address as u32) + (offset as u32), Rr, self.get_ds((address as u32) + (offset as u32)));
 
         if inc {
             address = address.wrapping_add(1);
@@ -1119,12 +1150,16 @@ impl Core {
 
         self.sp = self.sp.overflowing_add(1).0;
         self.set_r(Rd, self.get_ds(self.sp as u32));
+
+        //println!("[DEBUG] STACK({:04X}) = {:02X}, SP = {:04X}", self.sp, self.get_r(Rd), self.sp);
     }
 
     #[allow(non_snake_case)]
     fn push(&mut self, Rr: u8) {
+        //println!("[DEBUG] STACK({:04X}) = {:02X}, SP = {:04X}", self.sp, self.get_r(Rr), self.sp.overflowing_sub(1).0);
         self.set_ds(self.sp as u32, self.get_r(Rr));
         self.sp = self.sp.overflowing_sub(1).0;
+        
     }
 
     #[allow(non_snake_case)]
@@ -1137,11 +1172,16 @@ impl Core {
     pub fn tick(&mut self) -> bool {
         use Instruction::*; 
 
+        //for i in 0..32 {
+        //    print!("{:02X} ", self.get_r(i));
+        //}
+        //println!("{:02X} {:04X} {:04X} {:02X}", self.sreg, self.pc, self.sp, self.get_ds(self.sp as u32));
+
         // Wait for multi-cycle instructions to complete
         if self.busy > 0 {
             self.busy = self.busy - 1;
             if self.debug {
-                println!("[0x{:04X}] ...", self.pc);
+                println!("[0x{:04X}] ...", self.pc<<1);
             }
             return true;
         }
@@ -1151,7 +1191,7 @@ impl Core {
         let op = Instruction::decode(opcode, prefetch);
 
         if self.debug {
-            println!("[0x{:04X}] {:?}", self.pc, op);
+            println!("[0x{:04X}] {:?}", self.pc<<1, op);
         }
 
         //Most instructions are single cycle so do this first

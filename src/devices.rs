@@ -8,6 +8,7 @@ use crate::hardware::Hardware;
 use crate::peripherals::Clocked;
 use crate::peripherals::port::{Port, VirtualPort};
 use crate::peripherals::spi::Spi;
+use crate::peripherals::stdio::Stdio;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -29,6 +30,7 @@ pub struct Device {
     pub sram: Rc<RefCell<dyn MemoryMapped>>,
     pub mm: Rc<RefCell<dyn MemoryMapped>>,
     pub ports: Vec<Rc<RefCell<Port>>>,
+    pub stdio: Rc<RefCell<Stdio>>,
     clocked: Vec<Rc<RefCell<dyn Clocked>>>,
     RAMEND: u16
 }
@@ -38,7 +40,7 @@ impl Device {
         match dt {
             DeviceType::ATtiny1626 => {
                 // Constants
-                const RAMEND: u16 = 0x3BFF;
+                const RAMEND: u16 = 0x3FFF;
 
                 //Memories
                 let flash: Rc<RefCell<dyn MemoryMapped>> =  Rc::new(RefCell::new(Memory::new(16384, 0xFF, 0)));
@@ -80,6 +82,8 @@ impl Device {
                 let clocked = vec![
                     spi0.clone() as Rc<RefCell<dyn Clocked>>
                 ];
+
+                let stdio = Rc::new(RefCell::new(Stdio::new("STDIO".to_string(), "stdout.txt".to_string())));
                 
                 //TODO
                 let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));
@@ -134,8 +138,9 @@ impl Device {
                 //[0x128A] LOCKBIT 
                 mm.add(0x1300, Rc::clone(&userrow));    //[0x1300] USERROW
                 mm.add(0x1400, Rc::clone(&eeprom));     //[0x1400] EEPROM (erased, read only)
+                mm.add(0x1500, stdio.clone() as Rc<RefCell<dyn MemoryMapped>>);
                 //[0x1500-0x33FF] RESERVED
-                mm.add(0x3400, Rc::clone(&sram));       //[0x3400] SRAM
+                mm.add(0x3800, Rc::clone(&sram));       //[0x3400] SRAM (RAMSTART = 0x3800 for 2K)
                 //[0x????-0x3FFF] RESERVED (up to 3K SRAM) 
                 //[0x4000-0x7FFF] RESERVED
                 mm.add(0x8000, Rc::clone(&flash));      //[0x8000] FLASH
@@ -150,6 +155,7 @@ impl Device {
                     mm: mm,
                     ports: ports,
                     clocked: clocked,
+                    stdio: stdio,
                     RAMEND
                 }
             }
@@ -176,12 +182,14 @@ impl Device {
                 let hex = Reader::new(&s);
                 for r in hex {
                     if let Record::Data{offset, value} = r.unwrap() {
-                        println!("[HEX] 0x{:04X} Writing {} bytes.", offset, value.len());
+                        print!("[HEX] 0x{:04X} Writing {} bytes.", offset, value.len());
                         let mut address = usize::from(offset);
                         for b in value {
+                            print!(" {:02X}", b);
                             self.flash.borrow_mut().write(address, b);
                             address += 1;
                         }
+                        println!("");
                     }
                 }
             }
