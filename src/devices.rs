@@ -4,11 +4,15 @@ use super::memory::Memory;
 use super::memory::MemoryMap;
 use super::memory::MemoryMapped;
 
+use crate::cores::InterruptHandler;
 use crate::hardware::Hardware;
 use crate::peripherals::Clocked;
+use crate::peripherals::InterruptSource;
 use crate::peripherals::port::{Port, VirtualPort};
 use crate::peripherals::spi::Spi;
 use crate::peripherals::stdio::Stdio;
+use crate::peripherals::cpuint::Cpuint;
+use crate::peripherals::tcb::Tcb;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -78,14 +82,20 @@ impl Device {
                 )));
                 spi0.borrow_mut().mux_alt = true;
 
+                let tcb0 = Rc::new(RefCell::new(Tcb::new("TCB0".to_string())));
+                let tcb1 = Rc::new(RefCell::new(Tcb::new("TCB1".to_string()))); 
 
                 let clocked = vec![
-                    spi0.clone() as Rc<RefCell<dyn Clocked>>
+                    spi0.clone() as Rc<RefCell<dyn Clocked>>,
+                    tcb0.clone() as Rc<RefCell<dyn Clocked>>
                 ];
 
                 let stdio = Rc::new(RefCell::new(Stdio::new("STDIO".to_string(), "stdout.txt".to_string())));
                 
-                //TODO
+                let cpuint = Rc::new(RefCell::new(Cpuint::new()));
+                cpuint.borrow_mut().add_source(13, tcb0.clone() as Rc<RefCell<dyn InterruptSource>>, 1);
+
+                //TODO3
                 let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));
                 let clkctrl: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x1D, 0x00, 0)));
                 //let porta: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
@@ -113,7 +123,7 @@ impl Device {
                 mm.add(0x0080, Rc::clone(&bod));        //[0x0080] BOD (not implemented) 
                 //[0x00A0] VREF 
                 //[0x0100] WDT 
-                //[0x0110] CPUINT 
+                mm.add(0x0110, cpuint.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0110] CPUINT 
                 mm.add(0x0120, Rc::clone(&crcscan));    //[0x0120] CRCSCAN (not implemented)
                 //[0x0140] RTC 
                 //[0x0180] EVSYS 
@@ -129,8 +139,9 @@ impl Device {
                 mm.add(0x08A0, Rc::clone(&twi));                               //[0x08A0] TWI0 (not implemented)
                 mm.add(0x08C0, spi0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x08C0] SPI0 (partial)
                 mm.add(0x0A00, Rc::clone(&tca0));                              //[0x0A00] TCA0 (placeholder)
-                //[0x0A80] TCB0 
-                //[0x0A90] TCB1 
+                
+                mm.add(0x0A80, tcb0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0A80] TCB0 
+                mm.add(0x0A90, tcb1.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0A90] TCB1 
                 mm.add(0x0F00, Rc::clone(&syscfg));     //[0x0F00] SYSCFG (DONE)
                 mm.add(0x1000, Rc::clone(&nvmctrl));    //[0x1000] NVMCTRL (not implemented) 
                 //[0x1100] SIGROW 
@@ -149,7 +160,13 @@ impl Device {
                 let mm: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(mm));
 
                 Device {
-                    core: Core::new(CoreType::AVRxt, Rc::clone(&mm), Rc::clone(&flash), RAMEND),
+                    core: Core::new(
+                        CoreType::AVRxt, 
+                        Rc::clone(&mm), 
+                        Rc::clone(&flash),
+                        cpuint.clone() as Rc<RefCell<dyn InterruptHandler>>, 
+                        RAMEND
+                    ),
                     flash: flash,
                     sram: sram,
                     mm: mm,

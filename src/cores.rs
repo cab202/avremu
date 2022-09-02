@@ -6,6 +6,14 @@ use super::memory::MemoryMapped;
 use bitmatch::bitmatch;
 use bitvec::prelude::*;
 
+pub trait InterruptHandler {
+    fn service_pending(&mut self) -> Option<u16> {
+        Option::None
+    }
+
+    fn reti(&mut self) {}
+}
+
 #[allow(dead_code)]
 pub enum CoreType {
     AVR,
@@ -26,11 +34,18 @@ pub struct Core {
     pub ds: Rc<RefCell<dyn MemoryMapped>>,
     pub progmem: Rc<RefCell<dyn MemoryMapped>>,
     busy: u8,
+    interrupt_handler: Rc<RefCell<dyn InterruptHandler>>,
     debug: bool
 }
 
 impl Core {
-    pub fn new(variant: CoreType, ds: Rc<RefCell<dyn MemoryMapped>>, progmem: Rc<RefCell<dyn MemoryMapped>>, sp_init: u16) -> Self {
+    pub fn new(
+        variant: CoreType, 
+        ds: Rc<RefCell<dyn MemoryMapped>>, 
+        progmem: Rc<RefCell<dyn MemoryMapped>>, 
+        interrupt_handler: Rc<RefCell<dyn InterruptHandler>>, 
+        sp_init: u16
+    ) -> Self {
         Self {
             variant,
             regs: [0;32],
@@ -39,6 +54,7 @@ impl Core {
             sp: sp_init,
             ds,
             progmem,
+            interrupt_handler,
             busy: 0,
             debug: false
         }
@@ -845,6 +861,9 @@ impl Core {
         self.sp += 1; let (bl, _) = ds.read(usize::from(self.sp));
         self.pc = ((bh as u16) << 8) | (bl as u16);
 
+        // Ack interrupt
+        self.interrupt_handler.borrow_mut().reti();
+
         //I bit in SREG not set for AVRxt 
     }
 
@@ -1186,6 +1205,24 @@ impl Core {
             return true;
         }
 
+        // HANDLE INTERRUPTS
+
+        // Interrupts enabled
+        if self.get_sreg_bit(BitSREG::I) {
+            let vector = self.interrupt_handler.borrow_mut().service_pending();
+            match vector {
+                Some(address) => {
+                    let mut ds = self.ds.borrow_mut();
+                    ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
+                    ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
+                    self.pc = address as u16;
+                    self.busy = 4;  // 2 cycles to to push PC + 3 cycles for jmp to vector
+                    return true;
+                }
+                None => {}
+            }
+        }
+
         let opcode = self.get_progmem(self.pc as u32);
         let prefetch = self.get_progmem((self.pc + 1) as u32);
         let op = Instruction::decode(opcode, prefetch);
@@ -1201,7 +1238,7 @@ impl Core {
             // Control
             BREAK   => {println!("[END] BREAK instruction encountered."); return false}, // NOP if OCD disabled
             NOP     => {},
-            SLEEP   => {}, // Not implemented
+            SLEEP   => {println!("[SLEEP]")}, // Not implemented
             WDR     => {}, // Not implemented
             // Arithmetic
             ADC     {Rd, Rr}    => {self.adc(Rd,Rr)},
