@@ -2,8 +2,7 @@
     "rust-analyzer.runnables.cargoExtraArgs": [
         "D:\\firmware.hex",
         "D:\\events.txt",
-        "1500",
-        "debug"
+        "10000"
     ],
     "cSpell.enableFiletypes": [
         "!rust"

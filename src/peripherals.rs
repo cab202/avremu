@@ -5,7 +5,7 @@ pub mod cpuint;
 pub mod tcb;
 
 pub trait InterruptSource {
-    fn interrupt(&self, index: usize) -> bool {
+    fn interrupt(&self, mask: u8) -> bool {
         // This function should return the bitwise and of the 
         // corresponding intflag and intctrl registers of the peripheral
         false

@@ -93,7 +93,8 @@ impl Device {
                 let stdio = Rc::new(RefCell::new(Stdio::new("STDIO".to_string(), "stdout.txt".to_string())));
                 
                 let cpuint = Rc::new(RefCell::new(Cpuint::new()));
-                cpuint.borrow_mut().add_source(13, tcb0.clone() as Rc<RefCell<dyn InterruptSource>>, 1);
+                cpuint.borrow_mut().add_source(13, tcb0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x03);
+                cpuint.borrow_mut().add_source(25, tcb1.clone() as Rc<RefCell<dyn InterruptSource>>, 0x03);
 
                 //TODO3
                 let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));

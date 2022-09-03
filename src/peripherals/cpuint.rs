@@ -13,7 +13,7 @@ const CPUINT_LVL1VEC:  usize = 0x03;
 pub struct Cpuint {
     regs: [u8; 4],
     ccp: bool,
-    sources: Vec<(usize, Rc<RefCell<dyn InterruptSource>>, usize)>,
+    sources: Vec<(usize, Rc<RefCell<dyn InterruptSource>>, u8)>,
     vectors: Vec<u16>
 }
 
@@ -31,8 +31,8 @@ impl Cpuint {
         }
     }
 
-    pub fn add_source(&mut self, vector_index: usize, peripheral: Rc<RefCell<dyn InterruptSource>>, flag_index: usize) {
-        self.sources.push((vector_index, peripheral, flag_index));
+    pub fn add_source(&mut self, vector_index: usize, peripheral: Rc<RefCell<dyn InterruptSource>>, flag_mask: u8) {
+        self.sources.push((vector_index, peripheral, flag_mask));
     }
 
     pub fn ccp_enable(&mut self) {
