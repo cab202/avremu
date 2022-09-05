@@ -130,11 +130,14 @@ impl QUTy {
     pub fn step(&mut self) -> bool {
         self.time += 1;
 
+        // This block hardcodes control of buzzer output; used in earlier tutorial
+        /*
         match self.time % 16384 {
             0 => self.mcu.ports[1].borrow_mut().po_out(0, true),
             8192 => self.mcu.ports[1].borrow_mut().po_out(0, false),
             _ => {}
         }
+        */
 
         if !self.events.is_empty() {
             while self.time >= self.events[0].time {
