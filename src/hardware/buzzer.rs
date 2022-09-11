@@ -19,18 +19,20 @@ pub struct Buzzer {
     net: Rc<RefCell<Net>>,
     state: BuzzerState,
     t_rise_last: usize,
-    t_fall_last: usize
+    t_fall_last: usize,
+    cycle_valid: bool
 }
 
 impl Buzzer {
     pub fn new(name: String, net: Rc<RefCell<Net>>) -> Self {
         let mut buzzer = Buzzer { 
             name,
-            pin: Rc::new(RefCell::new(PinState::WeakPullDown)),
+            pin: Rc::new(RefCell::new(PinState::Open)),
             net,
             state: BuzzerState::Undefined,
             t_rise_last: 0,
-            t_fall_last: 0
+            t_fall_last: 0,
+            cycle_valid: false
         };
         buzzer.net.borrow_mut().connect(Rc::downgrade(&buzzer.pin));
         buzzer.update(0);
@@ -51,18 +53,22 @@ impl Hardware for Buzzer {
                 if new_state.eq(&BuzzerState::High) {
                     let diff = time - self.t_rise_last;
                     let f = 3333333.333/f64::from(diff as i32);
-                    if (f > 20.0) & (f < 20000.0) {
+                    if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
                         println!("[@{:08X}] BUZZER|{}: {:.0} Hz", time, self.name, f);
                     }
-                    self.t_rise_last = time
+                    self.t_rise_last = time;
+                    if !self.cycle_valid {
+                        self.cycle_valid = true;
+                    }
                 }
+                
             },
             BuzzerState::High => {
                 if new_state.eq(&BuzzerState::Low) {
                     self.t_fall_last = time
                 }
             },
-            _ => {}
+            _ => {self.cycle_valid = false}
         }
         self.state = new_state;
     }
