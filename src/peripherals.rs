@@ -3,6 +3,7 @@ pub mod spi;
 pub mod stdio;
 pub mod cpuint;
 pub mod tcb;
+pub mod tca;
 
 pub trait InterruptSource {
     fn interrupt(&self, mask: u8) -> bool {

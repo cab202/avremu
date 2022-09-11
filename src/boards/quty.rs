@@ -4,15 +4,21 @@ use std::rc::Rc;
 
 use crate::devices::Device;
 use crate::devices::DeviceType;
-use crate::hardware::Hardware;
+
 use crate::nets::Net;
+use crate::nets::NetState;
+use crate::nets::PinState;
+
+use crate::hardware::Hardware;
 use crate::hardware::led::Led;
 use crate::hardware::pushbutton::Pushbutton;
 use crate::hardware::buzzer::Buzzer;
 use crate::hardware::ic74hc595::IC74HC595;
 use crate::hardware::display::Display;
+use crate::hardware::sinkpwm::SinkPwm;
+
 use crate::events::Events;
-use crate::nets::NetState;
+
 
 pub struct QUTy {
     hw: HashMap<String, Box<dyn Hardware>>,
@@ -107,6 +113,7 @@ impl QUTy {
         hw.insert("P1".to_string(), Box::new(Buzzer::new("P1".to_string(), Rc::clone(nets.get("PB0_BUZZER").unwrap()))));
         hw.insert("U2".to_string(), Box::new(sr));
         hw.insert("DS1".to_string(), Box::new(disp));
+        hw.insert("R9".to_string(), Box::new(SinkPwm::new("DISP_EN".to_string(), Rc::clone(nets.get("PB1_DISP_EN").unwrap()), PinState::WeakPullUp)));
 
         let mut quty = QUTy { 
             hw, 

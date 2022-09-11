@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::memory::MemoryMapped;
 use crate::peripherals::InterruptSource;
 use crate::peripherals::Clocked;
