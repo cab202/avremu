@@ -52,9 +52,11 @@ impl Hardware for Buzzer {
             BuzzerState::Low => {
                 if new_state.eq(&BuzzerState::High) {
                     let diff = time - self.t_rise_last;
+                    let ppw = self.t_fall_last - self.t_rise_last;
                     let f = 3333333.333/f64::from(diff as i32);
+                    let duty = f64::from(ppw as i32)/f64::from(diff as i32);
                     if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
-                        println!("[@{:08X}] BUZZER|{}: {:.0} Hz", time, self.name, f);
+                        println!("[@{:08X}] BUZZER|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, f, duty);
                     }
                     self.t_rise_last = time;
                     if !self.cycle_valid {
