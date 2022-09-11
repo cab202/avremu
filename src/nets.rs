@@ -15,6 +15,7 @@ pub enum PinState {
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone, Copy)]
 pub enum NetState {
     Undefined,
     High,

@@ -5,6 +5,7 @@ use std::rc::Rc;
 use crate::devices::Device;
 use crate::devices::DeviceType;
 
+use crate::hardware::pot::Pot;
 use crate::nets::Net;
 use crate::nets::NetState;
 use crate::nets::PinState;
@@ -114,6 +115,7 @@ impl QUTy {
         hw.insert("U2".to_string(), Box::new(sr));
         hw.insert("DS1".to_string(), Box::new(disp));
         hw.insert("R9".to_string(), Box::new(SinkPwm::new("DISP_EN".to_string(), Rc::clone(nets.get("PB1_DISP_EN").unwrap()), PinState::WeakPullUp)));
+        hw.insert("R1".to_string(), Box::new(Pot::new("R1".to_string(), Rc::clone(nets.get("PA2_POT").unwrap()), 0.5)));
 
         let mut quty = QUTy { 
             hw, 

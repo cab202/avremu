@@ -5,6 +5,7 @@ pub mod buzzer;
 pub mod ic74hc595;
 pub mod display;
 pub mod sinkpwm;
+pub mod pot;
 
 pub trait Hardware {
     fn update(&mut self, time: usize);

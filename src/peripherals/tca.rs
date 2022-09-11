@@ -311,7 +311,7 @@ impl Clocked for Tca {
                     
                     //TOP
                     if (self.regs[TCA_CNTL] == self.regs[TCA_PERL]) & (self.regs[TCA_CNTH] == self.regs[TCA_PERH]) {
-                        println!("[{}] TCA INTFLAGS.OVF set @{:08X}", self.name, time);
+                        //println!("[{}] TCA INTFLAGS.OVF set @{:08X}", self.name, time);
                         self.regs[TCA_INTFLAGS] |= 0x01;
                     }
 
@@ -319,7 +319,7 @@ impl Clocked for Tca {
                     for i in 0..3 {
                         if (self.regs[TCA_CNTL] == self.regs[TCA_CMP0L+(i<<1)]) & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H+(i<<1)]) {
                             self.regs[TCA_CTRLC] &= !(1<<i); // Clear WO
-                            println!("[{}] TCA INTFLAGS.CMP{} set @{:08X}", self.name, i, time);
+                            //println!("[{}] TCA INTFLAGS.CMP{} set @{:08X}", self.name, i, time);
                             self.regs[TCA_INTFLAGS] |= 0x10<<i;
                         }
                     }

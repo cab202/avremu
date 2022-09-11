@@ -198,6 +198,10 @@ impl Port {
     pub fn get_pinstate(&self, pin_index: u8) -> bool {
         self.regs[PORT_IN].view_bits::<Lsb0>()[usize::from(pin_index)]
     }
+
+    pub fn get_netstate(&self, pin_index: u8) -> NetState {
+        self.pio[pin_index as usize].net.borrow().state
+    }
 }
 
 impl MemoryMapped for Port {

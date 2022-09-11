@@ -74,7 +74,7 @@ impl Hardware for SinkPwm {
                     let diff = time - self.t_rise_last;
                     let ppw = self.t_fall_last - self.t_rise_last;
                     let f = 3333333.333/f64::from(diff as i32);
-                    let duty = f64::from(ppw as i32)/f64::from(diff as i32);
+                    let duty = 100.0*f64::from(ppw as i32)/f64::from(diff as i32);
                     if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
                         println!("[@{:08X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, f, duty);
                     }
