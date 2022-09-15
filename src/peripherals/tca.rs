@@ -70,6 +70,7 @@ pub struct Tca {
     pins: [u8; 3],
     pins_alt: [u8; 3],
     pub mux_alt: [bool; 3],
+    count_down: bool, // used for dual slopes
 }
 
 impl Tca {
@@ -84,7 +85,8 @@ impl Tca {
             port,
             pins,
             pins_alt,
-            mux_alt: [false; 3]
+            mux_alt: [false; 3],
+            count_down: false,
         }
     }
 }
@@ -163,31 +165,13 @@ impl MemoryMapped for Tca {
                     } 
                 }
                 self.cntmode = match value & 0x07 {
-                    0x00 => {
-                        println!("[WARNING] NORMAL mode is not implemented for TCA in this emulator.");
-                        TCA_MODE::NORMAL
-                    },
-                    0x01 => {
-                        println!("[WARNING] FRQ mode is not implemented for TCA in this emulator.");
-                        TCA_MODE::FRQ
-                    },
+                    0x00 => TCA_MODE::NORMAL,
+                    0x01 => TCA_MODE::FRQ,
                     0x03 => TCA_MODE::SINGLESLOPE,
-                    0x05 => {
-                        println!("[WARNING] DSTOP mode is not implemented for TCA in this emulator.");
-                        TCA_MODE::DSTOP
-                    },
-                    0x06 => {
-                        println!("[WARNING] DSBOTH mode is not implemented for TCA in this emulator.");
-                        TCA_MODE::DSBOTH
-                    },
-                    0x07 => {
-                        println!("[WARNING] DSBOTTOM mode is not implemented for TCA in this emulator.");
-                        TCA_MODE::DSBOTTOM
-                    },
-                    _ => {
-                        println!("[WARNING] Invalid mode specified for TCA. TCA will default to NORMAL mode.");
-                        TCA_MODE::NORMAL
-                    },
+                    0x05 => TCA_MODE::DSTOP,
+                    0x06 => TCA_MODE::DSBOTH,
+                    0x07 => TCA_MODE::DSBOTTOM,
+                    _ => TCA_MODE::NORMAL,
                     
                 };
                 if value & 0x08 != 0 {
@@ -275,6 +259,88 @@ impl Clocked for Tca {
                 TCA_CLKSEL::DIV1024 => {self.clk_divider = 1023},
             }
             match self.cntmode {
+                TCA_MODE::NORMAL => {
+                    //Increment counter
+                    if (self.regs[TCA_CNTL] == self.regs[TCA_CMP0L]) & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H]) {
+                        // Reset
+                        self.regs[TCA_CNTL] = 0;
+                        self.regs[TCA_CNTH] = 0;
+                    } else {
+                        let ovf;
+
+                        if (self.regs[TCA_CTRLESET] & 1) == 1 {
+                            (self.regs[TCA_CNTL], ovf) = self.regs[TCA_CNTL].overflowing_add(1);
+
+                            if ovf {
+                                self.regs[TCA_CNTH] += 1;
+                            }
+                        } else {
+                            (self.regs[TCA_CNTL], ovf) = self.regs[TCA_CNTL].overflowing_sub(1);
+
+                            if ovf {
+                                self.regs[TCA_CNTH] -= 1;
+                            }
+                        }
+
+                    }
+                    
+                    // BOTTOM
+                    if (self.regs[TCA_CNTL] == 0) & (self.regs[TCA_CNTH] == 0) {
+                        
+                        for i in 0..3 {
+                            if (self.regs[TCA_CTRLFCLR] & (0x02<<i)) != 0 {
+                                self.regs[TCA_CMP0L+(i<<1)] = self.regs[TCA_CMP0BUFL+(i<<1)];
+                                self.regs[TCA_CMP0H+(i<<1)] = self.regs[TCA_CMP0BUFH+(i<<1)];
+                            }
+                        }
+
+                        self.regs[TCA_CTRLFCLR] &= 0xF0; // update event, clear BV bits
+                    }
+                    
+                    //TOP
+                    if (self.regs[TCA_CNTL] == self.regs[TCA_PERL]) & (self.regs[TCA_CNTH] == self.regs[TCA_PERH]) {
+                        //println!("[{}] TCA INTFLAGS.OVF set @{:08X}", self.name, time);
+                        self.regs[TCA_INTFLAGS] |= 0x01;
+                    }
+                },
+                TCA_MODE::FRQ => {
+                    //Increment counter
+                    if (self.regs[TCA_CNTL] == self.regs[TCA_CMP0L]) & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H]) {
+                        // Reset
+                        self.regs[TCA_CNTL] = 0;
+                        self.regs[TCA_CNTH] = 0;
+                    } else {
+                        let ovf;
+                        (self.regs[TCA_CNTL], ovf) = self.regs[TCA_CNTL].overflowing_add(1);
+                        if ovf {
+                            self.regs[TCA_CNTH] += 1;
+                        }
+                    }
+                    
+                    // BOTTOM
+                    if (self.regs[TCA_CNTL] == 0) & (self.regs[TCA_CNTH] == 0) {
+                        
+                        for i in 0..3 {
+                            if (self.regs[TCA_CTRLFCLR] & (0x02<<i)) != 0 {
+                                self.regs[TCA_CMP0L+(i<<1)] = self.regs[TCA_CMP0BUFL+(i<<1)];
+                                self.regs[TCA_CMP0H+(i<<1)] = self.regs[TCA_CMP0BUFH+(i<<1)];
+                            }
+
+                            self.regs[TCA_CTRLC] |= (1<<i); // Set WO
+                        }
+
+                        self.regs[TCA_CTRLFCLR] &= 0xF0; // update event, clear BV bits
+                    } 
+                    
+                    // Compare match
+                    for i in 0..3 {
+                        if (self.regs[TCA_CNTL] == self.regs[TCA_CMP0L+(i<<1)]) & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H+(i<<1)]) {
+                            self.regs[TCA_CTRLC] &= !(1<<i); // Clear WO
+                            //println!("[{}] TCA INTFLAGS.CMP{} set @{:08X}", self.name, i, time);
+                            self.regs[TCA_INTFLAGS] |= 0x10<<i;
+                        }
+                    }
+                },
                 TCA_MODE::SINGLESLOPE => {
                     //Increment counter
                     if (self.regs[TCA_CNTL] == self.regs[TCA_PERL]) & (self.regs[TCA_CNTH] == self.regs[TCA_PERH]) {
@@ -320,6 +386,80 @@ impl Clocked for Tca {
                         if (self.regs[TCA_CNTL] == self.regs[TCA_CMP0L+(i<<1)]) & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H+(i<<1)]) {
                             self.regs[TCA_CTRLC] &= !(1<<i); // Clear WO
                             //println!("[{}] TCA INTFLAGS.CMP{} set @{:08X}", self.name, i, time);
+                            self.regs[TCA_INTFLAGS] |= 0x10<<i;
+                        }
+                    }
+
+                },
+                TCA_MODE::DSTOP | TCA_MODE::DSBOTH | TCA_MODE::DSBOTTOM => {
+                    //Increment counter
+                    if !self.count_down & (self.regs[TCA_CNTL] == self.regs[TCA_PERL]) & (self.regs[TCA_CNTH] == self.regs[TCA_PERH])
+                    | (self.count_down & (self.regs[TCA_CNTL] == 0) & (self.regs[TCA_CNTH] == 0)) {
+                        // Flip count direction
+                        self.count_down ^= true;
+                        // println!("[{}] TCA count_down = {} @{:08X}", self.name, self.count_down, time);
+                        // println!("[{}] TCA TCA_CNTL = {} @{:08X}", self.name, self.regs[TCA_CNTL], time);
+                        // println!("[{}] TCA TCA_CNTH = {} @{:08X}", self.name, self.regs[TCA_CNTH], time);
+                    } else {
+                        let ovf;
+
+                        if self.count_down {
+                            (self.regs[TCA_CNTL], ovf) = self.regs[TCA_CNTL].overflowing_sub(1);
+                            
+                            if ovf {
+                                self.regs[TCA_CNTH] -= 1;
+                            }
+                        } else {
+                            (self.regs[TCA_CNTL], ovf) = self.regs[TCA_CNTL].overflowing_add(1);
+
+                            if ovf {
+                                self.regs[TCA_CNTH] += 1;
+                            }
+                        }
+                    }
+                    
+                    // BOTTOM
+                    if (self.regs[TCA_CNTL] == 0) & (self.regs[TCA_CNTH] == 0) {
+                        
+                        if (self.regs[TCA_CTRLFCLR] & 0x01) != 0 {
+                            self.regs[TCA_PERL] = self.regs[TCA_PERBUFL];
+                            self.regs[TCA_PERH] = self.regs[TCA_PERBUFH];
+                        }
+
+                        for i in 0..3 {
+                            if (self.regs[TCA_CTRLFCLR] & (0x02<<i)) != 0 {
+                                self.regs[TCA_CMP0L+(i<<1)] = self.regs[TCA_CMP0BUFL+(i<<1)];
+                                self.regs[TCA_CMP0H+(i<<1)] = self.regs[TCA_CMP0BUFH+(i<<1)];
+                            }
+
+                            self.regs[TCA_CTRLC] |= (1<<i); // Set WO
+                        }
+
+                        // println!("[{}] TCA INTFLAGS.OVF set @{:08X}", self.name, time);
+                        if matches!(self.cntmode, TCA_MODE::DSBOTH) | matches!(self.cntmode, TCA_MODE::DSBOTTOM) {
+                            self.regs[TCA_INTFLAGS] |= 0x01
+                        };
+
+                        self.regs[TCA_CTRLFCLR] &= 0xF0; // update event, clear BV bits
+                    } 
+                    
+                    //TOP
+                    if (self.regs[TCA_CNTL] == self.regs[TCA_PERL]) & (self.regs[TCA_CNTH] == self.regs[TCA_PERH]) {
+                        // println!("[{}] TCA INTFLAGS.OVF set @{:08X}", self.name, time);
+                        if matches!(self.cntmode, TCA_MODE::DSTOP) | matches!(self.cntmode, TCA_MODE::DSBOTH) {
+                            self.regs[TCA_INTFLAGS] |= 0x01
+                        };
+                    }
+
+                    // Compare match
+                    for i in 0..3 {
+                        if (self.regs[TCA_CNTL] == self.regs[TCA_CMP0L+(i<<1)]) & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H+(i<<1)]) {
+                            if self.count_down {
+                                self.regs[TCA_CTRLC] |= (1<<i); // Set WO
+                            } else {
+                                self.regs[TCA_CTRLC] &= !(1<<i); // Clear WO
+                            }
+                            // println!("[{}] TCA INTFLAGS.CMP{} set @{:08X}", self.name, i, time);
                             self.regs[TCA_INTFLAGS] |= 0x10<<i;
                         }
                     }
