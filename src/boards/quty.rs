@@ -5,7 +5,6 @@ use std::rc::Rc;
 use crate::devices::Device;
 use crate::devices::DeviceType;
 
-use crate::hardware::pot::Pot;
 use crate::nets::Net;
 use crate::nets::NetState;
 use crate::nets::PinState;
@@ -17,6 +16,8 @@ use crate::hardware::buzzer::Buzzer;
 use crate::hardware::ic74hc595::IC74HC595;
 use crate::hardware::display::Display;
 use crate::hardware::sinkpwm::SinkPwm;
+use crate::hardware::pot::Pot;
+use crate::hardware::sinkuart::SinkUART;
 
 use crate::events::Events;
 
@@ -116,6 +117,7 @@ impl QUTy {
         hw.insert("DS1".to_string(), Box::new(disp));
         hw.insert("R9".to_string(), Box::new(SinkPwm::new("DISP_EN".to_string(), Rc::clone(nets.get("PB1_DISP_EN").unwrap()), PinState::WeakPullUp)));
         hw.insert("R1".to_string(), Box::new(Pot::new("R1".to_string(), Rc::clone(nets.get("PA2_POT").unwrap()), 0.5)));
+        hw.insert("U5".to_string(), Box::new(SinkUART::new("U5".to_string(), Rc::clone(nets.get("PB2_UART_TX").unwrap()), Rc::clone(nets.get("PB3_UART_RX").unwrap()), "uart.txt".to_string())));
 
         let mut quty = QUTy { 
             hw, 
