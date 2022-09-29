@@ -5,6 +5,7 @@ pub mod cpuint;
 pub mod tcb;
 pub mod tca;
 pub mod adc;
+pub mod usart;
 
 pub trait InterruptSource {
     fn interrupt(&self, mask: u8) -> bool {

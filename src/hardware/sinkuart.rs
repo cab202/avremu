@@ -148,6 +148,8 @@ impl Hardware for SinkUART {
             _ => self.tx_state = UartState::Idle
         };
 
+        self.rx_pinstate = rx_pinstate_new;
+
     }
 
     fn event(&mut self, time: usize, event: &String) {
