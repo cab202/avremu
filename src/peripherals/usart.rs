@@ -338,7 +338,7 @@ impl Clocked for Usart {
                         } else {
                             self.port.borrow_mut().po_out(self.pins[1], (self.tx_reg & 1) == 1);
                         }
-                        println!("[@{:08X}] USART Tx, Bit {}: {:}", time, self.tx_bit, self.tx_reg & 1);
+                        //println!("[@{:08X}] USART Tx, Bit {}: {:}", time, self.tx_bit, self.tx_reg & 1);
                         self.tx_reg >>= 1;
                         self.tx_bit -= 1;
                         if self.tx_bit == 0 {
