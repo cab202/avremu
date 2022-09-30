@@ -98,6 +98,7 @@ impl Hardware for SinkUART {
         match self.rx_state {
             UartState::Idle => {
                 if rx_pinstate_new.eq(&RxState::Low) & self.rx_pinstate.eq(&RxState::High) {
+                    println!("[VCP] Start bit detected.");
                     self.rx_state = UartState::Shift;
                     self.rx_bit = 9; // 8N1
                     self.rx_time = time+(self.tics_per_bit*3/2);
@@ -107,10 +108,14 @@ impl Hardware for SinkUART {
                 if time >= self.rx_time {
                     self.rx_time += self.tics_per_bit;
                     if rx_pinstate_new.eq(&RxState::High) {
+                        println!("[@{:08X}] VCP Rx, Bit {}: 1.", time, self.rx_bit);
                         self.rx_reg |= 1;
+                    } else {
+                        println!("[@{:08X}] VCP Rx, Bit {}: 0.", time, self.rx_bit);
                     }
                     self.rx_bit -= 1;
                     if self.rx_bit == 0 {
+                        println!("[@{:08X}] VCP Rx, Byte 0x{:02X}: 0.", time, ((self.rx_reg >> 1) as u8).reverse_bits());
                         self.rx_state = UartState::Check;
                     } else {
                         self.rx_reg <<= 1;
@@ -124,6 +129,7 @@ impl Hardware for SinkUART {
                     byte.view_bits_mut::<Lsb0>().reverse();
                     self.out(byte);
                 }
+                self.rx_reg = 0;
                 self.rx_state = UartState::Idle;
             }
         };

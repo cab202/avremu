@@ -1,6 +1,6 @@
 {
     "rust-analyzer.runnables.cargoExtraArgs": [
-        "D:\\git\\Bitbucket\\cab202\\week08\\avremu\\.pio\\build\\QUTy\\firmware.hex",
+        "D:\\scratch\\quty_debug\\.pio\\build\\QUTy\\firmware.hex",
         "D:\\events.txt",
         "1500000"
     ],

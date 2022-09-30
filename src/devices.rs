@@ -15,6 +15,7 @@ use crate::peripherals::cpuint::Cpuint;
 use crate::peripherals::tcb::Tcb;
 use crate::peripherals::tca::Tca;
 use crate::peripherals::adc::Adc;
+use crate::peripherals::usart::Usart;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -83,6 +84,18 @@ impl Device {
                 )));
                 spi0.borrow_mut().mux_alt = true;
 
+                let usart0 = Rc::new(RefCell::new(Usart::new(
+                    "USART0".to_string(), 
+                    Rc::clone(&portb), [3,2,1,0], 
+                    Rc::clone(&porta), [2,1,3,4]
+                )));
+
+                let usart1 = Rc::new(RefCell::new(Usart::new(
+                    "USART1".to_string(),  
+                    Rc::clone(&porta), [2,1,3,4],
+                    Rc::clone(&portc), [1,2,0,3],
+                )));
+
                 let tca0 = Rc::new(RefCell::new(Tca::new(
                     "TCA0".to_string(),
                     Rc::clone(&portb), [0, 1, 3], [3, 4, 5]
@@ -117,6 +130,8 @@ impl Device {
                     tca0.clone() as Rc<RefCell<dyn Clocked>>,
                     tcb0.clone() as Rc<RefCell<dyn Clocked>>,
                     adc0.clone() as Rc<RefCell<dyn Clocked>>,
+                    usart0.clone() as Rc<RefCell<dyn Clocked>>,
+                    usart1.clone() as Rc<RefCell<dyn Clocked>>,
                 ];
 
                 let stdio = Rc::new(RefCell::new(Stdio::new("STDIO".to_string(), "stdout.txt".to_string())));
@@ -127,8 +142,14 @@ impl Device {
                 cpuint.borrow_mut().add_source(11, tca0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x20); //CMP1
                 cpuint.borrow_mut().add_source(12, tca0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x40); //CMP2
                 cpuint.borrow_mut().add_source(13, tcb0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x03);
+                cpuint.borrow_mut().add_source(17, usart0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x80); //RCX
+                cpuint.borrow_mut().add_source(18, usart0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x20); //DRE
+                cpuint.borrow_mut().add_source(19, usart0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x40); //TXC
                 cpuint.borrow_mut().add_source(22, adc0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x01); //RESRDY
                 cpuint.borrow_mut().add_source(25, tcb1.clone() as Rc<RefCell<dyn InterruptSource>>, 0x03);
+                cpuint.borrow_mut().add_source(26, usart1.clone() as Rc<RefCell<dyn InterruptSource>>, 0x80); //RCX
+                cpuint.borrow_mut().add_source(27, usart1.clone() as Rc<RefCell<dyn InterruptSource>>, 0x20); //DRE
+                cpuint.borrow_mut().add_source(28, usart1.clone() as Rc<RefCell<dyn InterruptSource>>, 0x40); //TXC
 
                 //TODO
                 let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));
@@ -169,8 +190,8 @@ impl Device {
                 //[0x05E0] PORTMUX 
                 mm.add(0x0600, adc0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0600] ADC0 
                 mm.add(0x0680, Rc::clone(&ac0));        //[0x0680] AC0 (not implemented) 
-                //[0x0800] USART0 
-                //[0x0820] USART1 
+                mm.add(0x0800, usart0.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0800] USART0 
+                mm.add(0x0820, usart1.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0820] USART1 
                 mm.add(0x08A0, Rc::clone(&twi));                                //[0x08A0] TWI0 (not implemented)
                 mm.add(0x08C0, spi0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x08C0] SPI0 (partial)
                 mm.add(0x0A00, tca0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0A00] TCA0 (placeholder)

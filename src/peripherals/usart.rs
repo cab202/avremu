@@ -70,8 +70,8 @@ pub struct Usart {
 }
 
 impl Usart {
-    pub fn new(name: String, port: Rc<RefCell<Port>>, port_alt: Rc<RefCell<Port>>, pins: [u8; 4], pins_alt: [u8; 4]) -> Self {
-        Usart {
+    pub fn new(name: String, port: Rc<RefCell<Port>>, pins: [u8; 4], port_alt: Rc<RefCell<Port>>, pins_alt: [u8; 4]) -> Self {
+        let mut usart = Usart {
             name,
             regs: [0; 0x0F],
             txen: false,
@@ -92,7 +92,9 @@ impl Usart {
             tx_reg: 0,
             rx_buf: VecDeque::new(),
             tx_buf: VecDeque::new()
-        }
+        };
+        usart.regs[USART_STATUS] = 0x20;
+        usart
     }
 
     fn rxen(&self) -> bool {
@@ -100,7 +102,7 @@ impl Usart {
     }
 
     fn txen(&self) -> bool {
-        (self.regs[USART_CTRLB] & 0x80) != 0
+        (self.regs[USART_CTRLB] & 0x40) != 0
     }
 
     fn mode(&self) -> USART_MODE {
@@ -120,7 +122,7 @@ impl Usart {
             USART_MODE::CLK2X => baud *= 8,
             _ => {}
         }
-        let mut inc = (0x100000000u64 * 64) / baud; // note tick = clk_per so cancels
+        let mut inc = (0x100000000u64 * 64) / baud.max(64); // note tick = clk_per so cancels
         inc as u32
     }
 
@@ -168,6 +170,7 @@ impl MemoryMapped for Usart {
         match address {
             //RXDATA is read only
             USART_TXDATAL => {
+                println!("[USART] TXDATAH: 0x{:02X}", value);
                 if self.dre() {
                     if self.tx_state.eq(&UsartState::Idle) {
                         // start bit
@@ -208,6 +211,19 @@ impl MemoryMapped for Usart {
             },
             USART_CTRLB => {
                 self.regs[USART_CTRLB] = value;
+                if self.txen() {
+                    if self.mux_alt {
+                        self.port_alt.borrow_mut().po_out(self.pins_alt[1], true);
+                    } else {
+                        self.port.borrow_mut().po_out(self.pins[1], true);
+                    }
+                } else {
+                    if self.mux_alt {
+                        self.port_alt.borrow_mut().po_out_clear(self.pins_alt[1]);
+                    } else {
+                        self.port.borrow_mut().po_out_clear(self.pins[1]);
+                    }
+                }
                 if (value & 0x1D) != 0 {
                     println!("[WARNING] SFDEN, ODME, GENAUTO, LINAUTO and MPCM features are not implemented for USART in this emulator. These bits will be ignored.");
                 }
@@ -317,35 +333,32 @@ impl Clocked for Usart {
                 UsartState::Idle => {},
                 UsartState::Shift => {
                     if tx_accum_new < self.tx_accum {
-
                         if self.mux_alt {
                             self.port_alt.borrow_mut().po_out(self.pins_alt[1], (self.tx_reg & 1) == 1);
                         } else {
                             self.port.borrow_mut().po_out(self.pins[1], (self.tx_reg & 1) == 1);
                         }
-                        self.rx_reg >>= 1;
-                        self.rx_bit -= 1;
+                        println!("[@{:08X}] USART Tx, Bit {}: {:}", time, self.tx_bit, self.tx_reg & 1);
+                        self.tx_reg >>= 1;
+                        self.tx_bit -= 1;
                         if self.tx_bit == 0 {
-                            if !self.dre() {
-                                self.tx_buf.push_back(((self.regs[USART_TXDATAH] as u16) << 8) | (self.regs[USART_TXDATAL] as u16));
-                                self.regs[USART_STATUS] |= 0x20; // Set DREIF
-                            }
                             if self.tx_buf.len() > 0 {
-                                self.tx_reg = (self.tx_buf.pop_front().unwrap() << 1) | 0x0200; // add sstart and stop bits
+                                self.tx_reg = (self.tx_buf.pop_front().unwrap() << 1) | 0x0200; // add start and stop bits
                                 self.tx_bit = 10; // check???
+                                if !self.dre() {
+                                    self.regs[USART_STATUS] |= 0x20; // Set DREIF
+                                }
                             } else {
                                 self.tx_state = UsartState::Idle;
                                 self.tx_accum = 0;
                                 self.regs[USART_STATUS] |= 0x40;  // Set TXCIF (buffer empty)
                             }                            
-                        } else {
-                            self.rx_reg <<= 1;
                         }
                     }
                 }
             }
         } else {
-            self.rx_state = UsartState::Idle;
+            self.tx_state = UsartState::Idle;
         }
 
         // update internal state
