@@ -170,7 +170,7 @@ impl MemoryMapped for Usart {
         match address {
             //RXDATA is read only
             USART_TXDATAL => {
-                println!("[USART] TXDATAH: 0x{:02X}", value);
+                //println!("[USART] TXDATAH: 0x{:02X}", value);
                 if self.dre() {
                     if self.tx_state.eq(&UsartState::Idle) {
                         // start bit
@@ -187,7 +187,7 @@ impl MemoryMapped for Usart {
                         self.tx_buf.push_back(value as u16);
                         self.regs[USART_TXDATAL] = value;
                         if self.tx_buf.len() > 1 {
-                            self.regs[USART_STATUS] &= !0x20; // Clear DREIF
+                            self.regs[USART_STATUS] &= 0xDF; // Clear DREIF
                         }
                     }
                 }
