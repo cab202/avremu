@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, collections::VecDeque};
 use std::cell::RefCell;
 
 use super::Hardware;
@@ -13,7 +13,8 @@ pub struct Display {
     net_en: Rc<RefCell<Net>>,
     net_digit: Rc<RefCell<Net>>,
     enabled: bool,
-    state: u8
+    state: VecDeque<(u8, usize)>,
+    state_2d: String
 }
 
 impl Display {
@@ -43,7 +44,8 @@ impl Display {
             net_en: Rc::new(RefCell::new(Net::new("".to_string()))),
             net_digit: Rc::new(RefCell::new(Net::new("".to_string()))),
             enabled: true, 
-            state: 0
+            state: VecDeque::from(vec!((0,0), (0,0), (0,0))),
+            state_2d: "".to_string()
         }
     }
 
@@ -60,8 +62,33 @@ impl Display {
         }
     }
 
+    fn seg_to_char(segs: u8) -> String {
+        match segs & 0x7F {
+            0b01111111 => " ".to_string(),
+            0b00001000 => "0".to_string(),
+            0b01101011 => "1".to_string(),
+            0b00111110 => "1'".to_string(),
+            0b01000100 => "2".to_string(),
+            0b01000001 => "3".to_string(),
+            0b00100011 => "4".to_string(),
+            0b00010001 => "5".to_string(),
+            0b00010000 => "6".to_string(),
+            0b01001011 => "7".to_string(),
+            0b00000000 => "8".to_string(),
+            0b00000001 => "9".to_string(),
+            0b00000010 => "A".to_string(),
+            0b00110000 => "B".to_string(),
+            0b00011100 => "C".to_string(),
+            0b01100000 => "D".to_string(),
+            0b00010100 => "E".to_string(),
+            0b00010110 => "F".to_string(),
+            0b01110111 => "-".to_string(),
+            _ => "?".to_string()
+        }
+    }
+
     fn decode(&self) -> String {
-        let code = self.state & 0x7F;
+        let code = self.state.front().unwrap().0 & 0x7F;
         let symbol = match code {
             0b01111111 => "Off".to_string(),
             0b00001000 => "0".to_string(),
@@ -84,8 +111,43 @@ impl Display {
             0b01110111 => "-".to_string(),
             _ => format!("0x{:02X}", code)
         };
-        let digit = if (self.state & 0x80) == 0x00 {"RHS"} else {"LHS"};
+        let digit = if (self.state.front().unwrap().0 & 0x80) == 0x00 {"RHS"} else {"LHS"};
         format!("{} ({})", symbol, digit)
+    }
+
+    fn decode_2d(&self) -> String {
+        let lhs_first = (self.state.front().unwrap().0 & 0x80) != 0;
+        let lhs;
+        let rhs;
+        if lhs_first {
+            //LHS first
+            lhs = self.state.front().unwrap();
+            rhs = self.state.get(1).unwrap();
+        } else {
+            lhs = self.state.get(1).unwrap();
+            rhs = self.state.front().unwrap();
+        }
+
+        let mut disp = String::new();
+        disp.push_str(&Self::seg_to_char(lhs.0));
+        disp.push_str(&Self::seg_to_char(rhs.0));
+
+        let time0 = self.state.get(0).unwrap().1;
+        let time1 = self.state.get(1).unwrap().1;
+        let time2 = self.state.get(2).unwrap().1;
+
+        let period = time0-time2;
+        let inton;
+        if lhs_first {
+            inton = time1-time2; 
+        } else {
+            inton = time0-time1; 
+        }
+
+        let freq = 3333333.3/(period as f64);
+        let duty = 100.0*(inton as f64)/(period as f64);
+                
+        format!("{} ({:.0} Hz, {:.0} %)", disp, freq, duty)
     }
 }
 
@@ -93,6 +155,7 @@ impl Hardware for Display {
     fn update(&mut self, time: usize) {
         self.enabled = self.net_en.borrow().state.eq(&NetState::High);
         //println!("DISP: Enable is {}", self.enabled);
+        let state = self.state.front().unwrap().0;
         let mut state_new = 0x7F;
         if self.enabled {
             for i in 0..7 {
@@ -109,17 +172,25 @@ impl Hardware for Display {
         }
         
         let mut print_state = false;
-        if self.state != state_new {
-            if (self.state & state_new) & 0x7F != 0x7F {
+        if state != state_new {
+            if (state & state_new) & 0x7F != 0x7F {
                 print_state = true;
             }
-        }
 
-        self.state = state_new;
-    
-        if print_state {
-            println!("[@{:08X}] DISP|{}: {}", time, self.name, self.decode());
-        }
+            self.state.push_front((state_new, time));
+            self.state.pop_back();
+
+            let valid_2d_cycle = self.state.front().unwrap().0 == self.state.back().unwrap().0;
+            
+            if valid_2d_cycle {
+                let state_2d_new = self.decode_2d();
+                if self.state_2d.ne(&state_2d_new) {
+                    println!("[@{:08X}] DISP|{}: {}", time, self.name, self.decode());
+                }
+            } else if print_state {
+                println!("[@{:08X}] DISP|{}: {}", time, self.name, self.decode());
+            }
+        }  
 
         //println!("DISP: State {} => {}", self.state, state_new);
         
