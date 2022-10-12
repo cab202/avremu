@@ -24,7 +24,7 @@ const USART_EVCTRL:     usize = 0x0C;
 const USART_TXPLCTRL:   usize = 0x0D;
 const USART_RXPLCTRL:   usize = 0x0E;
 
-enum USART_MODE {
+enum UsartMode {
     NORMAL,
     CLK2X,
     GENAUTO,
@@ -49,8 +49,6 @@ enum UsartState {
 pub struct Usart {
     name: String, 
     regs: [u8; 0x0F],
-    txen: bool,
-    rxen: bool,
     port: Rc<RefCell<Port>>,
     port_alt: Rc<RefCell<Port>>,
     pins: [u8; 4],
@@ -74,8 +72,6 @@ impl Usart {
         let mut usart = Usart {
             name,
             regs: [0; 0x0F],
-            txen: false,
-            rxen: false,
             port,
             port_alt,
             pins,
@@ -105,12 +101,12 @@ impl Usart {
         (self.regs[USART_CTRLB] & 0x40) != 0
     }
 
-    fn mode(&self) -> USART_MODE {
+    fn mode(&self) -> UsartMode {
         match (self.regs[USART_CTRLB] >> 1) & 0x03 {
-            0 => USART_MODE::NORMAL,
-            1 => USART_MODE::CLK2X,
-            2 => USART_MODE::GENAUTO,
-            3 => USART_MODE::LINAUTO,
+            0 => UsartMode::NORMAL,
+            1 => UsartMode::CLK2X,
+            2 => UsartMode::GENAUTO,
+            3 => UsartMode::LINAUTO,
             _ => panic!("ERROR! Invalid USART mode.")
         }
     }
@@ -118,11 +114,11 @@ impl Usart {
     fn baud_inc(&self) -> u32 {
         let mut baud = ((self.regs[USART_BAUDH] as u64) << 8) | (self.regs[USART_BAUDL] as u64);
         match self.mode() {
-            USART_MODE::NORMAL => baud *= 16,
-            USART_MODE::CLK2X => baud *= 8,
+            UsartMode::NORMAL => baud *= 16,
+            UsartMode::CLK2X => baud *= 8,
             _ => {}
         }
-        let mut inc = (0x100000000u64 * 64) / baud.max(64); // note tick = clk_per so cancels
+        let inc = (0x100000000u64 * 64) / baud.max(64); // note tick = clk_per so cancels
         inc as u32
     }
 
@@ -211,6 +207,7 @@ impl MemoryMapped for Usart {
             },
             USART_CTRLB => {
                 self.regs[USART_CTRLB] = value;
+                //TODO: This won't behave properly if mux is changed after config
                 if self.txen() {
                     if self.mux_alt {
                         self.port_alt.borrow_mut().po_out(self.pins_alt[1], true);
@@ -270,7 +267,7 @@ impl InterruptSource for Usart {
 }
 
 impl Clocked for Usart {
-    fn tick(&mut self, time: usize) {
+    fn tick(&mut self, _time: usize) {
         // new Rx pinstate
         let rx_port_pinstate = if self.mux_alt {
             self.port_alt.borrow().get_pinstate(self.pins_alt[0])
@@ -285,7 +282,7 @@ impl Clocked for Usart {
 
         // increment accumulators
         let (mut rx_accum_new, _) = self.rx_accum.overflowing_add(self.baud_inc());
-        let (mut tx_accum_new, _) = self.tx_accum.overflowing_add(self.baud_inc());
+        let (tx_accum_new, _) = self.tx_accum.overflowing_add(self.baud_inc());
         
         if self.rxen() {
             match self.rx_state {
