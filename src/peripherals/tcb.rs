@@ -154,7 +154,7 @@ impl MemoryMapped for Tcb {
 }
 
 impl InterruptSource for Tcb {
-    fn interrupt(&self, mask: u8) -> bool {
+    fn interrupt(&mut self, mask: u8) -> bool {
         (self.regs[TCB_INTCTRL] & self.regs[TCB_INTFLAGS] & mask) != 0x00
     }
 }

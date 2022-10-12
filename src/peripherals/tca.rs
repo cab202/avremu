@@ -250,7 +250,7 @@ impl MemoryMapped for Tca {
 }
 
 impl InterruptSource for Tca {
-    fn interrupt(&self, mask: u8) -> bool {
+    fn interrupt(&mut self, mask: u8) -> bool {
         (self.regs[TCA_INTCTRL] & self.regs[TCA_INTFLAGS] & mask) != 0x00
     }
 }

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use crate::peripherals::port::Port;
 use crate::memory::MemoryMapped;
-use super::Clocked;
+use super::{Clocked, InterruptSource};
 
 use bitvec::prelude::*;
 
@@ -36,7 +36,8 @@ pub struct Spi {
     pub mux_alt: bool,
     ps_count: u8,
     subinterval: u8, 
-    state_sck: bool
+    state_sck: bool,
+    intflags_set: u8
 }
 
 impl Spi {
@@ -58,7 +59,8 @@ impl Spi {
             mux_alt: false,
             ps_count: 0,
             subinterval: 0,
-            state_sck: false
+            state_sck: false,
+            intflags_set: 0
         }
     }
 
@@ -68,7 +70,9 @@ impl Spi {
     }
     
     fn handle_write_intflags(&mut self, value: u8) {
-         // TODO: Handle hardware, manual clears
+         // NOTE: This is undefined behviour; anecdotally validated only
+         // TODO: Confirm experimentally
+         self.regs[SPI_INTFLAGS] &= (!value) | 0x20; // Write to clear any bit except DREIF
     }  
 
     fn handle_read_data(&mut self) -> u8 {
@@ -84,6 +88,12 @@ impl Spi {
             self.data_rx
         } else {
             // Unbuffered
+
+            // Clear INTFLAGS if interrupt has been serviced
+            self.regs[SPI_INTFLAGS] &= !self.intflags_set;
+            self.intflags_set = 0x00;
+
+            // Read data
             self.data_rx
         }
     }
@@ -104,6 +114,11 @@ impl Spi {
             }
         } else {
             // Unbuffered
+            
+            // Clear INTFLAGS if interrupt has been serviced
+            self.regs[SPI_INTFLAGS] &= !self.intflags_set;
+            self.intflags_set = 0x00;
+
             if self.sr_state > 0 {
                 self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(6, true); //WRCOL
             }
@@ -180,6 +195,23 @@ impl MemoryMapped for Spi {
             _ => panic!("Attempt to access invalid register in SPI peripheral.")
         }
         0
+    }
+}
+
+impl InterruptSource for Spi {
+    fn interrupt(&mut self, mask: u8) -> bool {
+        if self.is_bufen() {
+            (self.regs[SPI_INTCTRL] & self.regs[SPI_INTFLAGS] & mask) != 0x00
+        } else {
+            //LSB is IE in non-buffered mode
+            if ((self.regs[SPI_INTCTRL] & 0x01) != 0x00) & ((self.regs[SPI_INTFLAGS] & 0xC0) != 0x00) {
+                self.intflags_set = self.regs[SPI_INTFLAGS] & 0xC0; // register which flags were set when read
+                true
+            } else {
+                false
+            }
+        
+        }
     }
 }
 

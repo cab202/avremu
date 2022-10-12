@@ -264,7 +264,7 @@ impl MemoryMapped for Usart {
 }
 
 impl InterruptSource for Usart {
-    fn interrupt(&self, mask: u8) -> bool {
+    fn interrupt(&mut self, mask: u8) -> bool {
         (self.regs[USART_STATUS] & self.regs[USART_CTRLA] & mask) != 0x00
     }
 }

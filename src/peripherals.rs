@@ -8,7 +8,7 @@ pub mod adc;
 pub mod usart;
 
 pub trait InterruptSource {
-    fn interrupt(&self, mask: u8) -> bool {
+    fn interrupt(&mut self, mask: u8) -> bool {
         // This function should return the bitwise and of the 
         // corresponding intflag and intctrl registers of the peripheral
         false

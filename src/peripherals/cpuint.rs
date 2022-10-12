@@ -66,7 +66,7 @@ impl InterruptHandler for Cpuint {
         //TODO: Handle NMI and priorities correctly
         if (self.regs[CPUINT_STATUS] & 0x01 == 0) {
             for i in 0..self.sources.len() {
-                if self.sources[i].1.borrow().interrupt(self.sources[i].2) {
+                if self.sources[i].1.borrow_mut().interrupt(self.sources[i].2) {
                     // Set LVL0EX flag
                     self.regs[CPUINT_STATUS] |= 0x01;   
                     //TODO: Handle NMI and priorities correctly

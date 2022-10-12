@@ -289,7 +289,7 @@ impl MemoryMapped for Adc {
 }
 
 impl InterruptSource for Adc {
-    fn interrupt(&self, mask: u8) -> bool {
+    fn interrupt(&mut self, mask: u8) -> bool {
         (self.regs[ADC_INTCTRL] & self.regs[ADC_INTFLAGS] & mask) != 0x00
     }
 }
