@@ -181,11 +181,13 @@ impl Hardware for Display {
             self.state.pop_back();
 
             let valid_2d_cycle = self.state.front().unwrap().0 == self.state.back().unwrap().0;
+            //println!("[DISP] Front: {:02X}, Back: {:02X}", self.state.front().unwrap().0, self.state.back().unwrap().0);
             
             if valid_2d_cycle {
                 let state_2d_new = self.decode_2d();
                 if self.state_2d.ne(&state_2d_new) {
-                    println!("[@{:08X}] DISP|{}: {}", time, self.name, self.decode());
+                    self.state_2d = state_2d_new;
+                    println!("[@{:08X}] DISP|{}: {}", time, self.name, self.state_2d);
                 }
             } else if print_state {
                 println!("[@{:08X}] DISP|{}: {}", time, self.name, self.decode());
