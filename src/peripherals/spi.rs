@@ -73,6 +73,7 @@ impl Spi {
          // NOTE: This is undefined behviour; anecdotally validated only
          // TODO: Confirm experimentally
          self.regs[SPI_INTFLAGS] &= (!value) | 0x20; // Write to clear any bit except DREIF
+         //println!("[SPI] Wrote INTFLAGS = {:02X}, now {:02X}", value, self.regs[SPI_INTFLAGS]);
     }  
 
     fn handle_read_data(&mut self) -> u8 {
@@ -206,6 +207,7 @@ impl InterruptSource for Spi {
             //LSB is IE in non-buffered mode
             if ((self.regs[SPI_INTCTRL] & 0x01) != 0x00) & ((self.regs[SPI_INTFLAGS] & 0xC0) != 0x00) {
                 self.intflags_set = self.regs[SPI_INTFLAGS] & 0xC0; // register which flags were set when read
+                //println!("[SPI] Interrupt {:02X}", self.regs[SPI_INTFLAGS]);
                 true
             } else {
                 false
@@ -298,6 +300,7 @@ impl Clocked for Spi {
                                             self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(6, true); // transfer complete
                                         }
                                     } else {
+                                        self.subinterval = 0;
                                         self.data_rx = self.sr_rx;
                                         self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(7, true); // transfer complete
                                     }     
