@@ -182,7 +182,7 @@ impl Clocked for Tcb {
                     }
                     // Compare match
                     if (self.regs[TCB_CNTL] == self.regs[TCB_CCMPL]) & (self.regs[TCB_CNTH] == self.regs[TCB_CCMPH]) {
-                        println!("[{}] TCB INTFLAGS.CAPT set @{:08X}", self.name, time);
+                        //println!("[{}] TCB INTFLAGS.CAPT set @{:08X}", self.name, time);
                         self.regs[TCB_INTFLAGS] |= 0x01;
                         // Reset counter
                         // TODO: Is this correct or early by a cycle?
@@ -191,7 +191,7 @@ impl Clocked for Tcb {
                     }
                     // Overflow
                     if ovf {
-                        println!("[{}] TCB INTFLAGS.OVF set @{:08X}", self.name, time);
+                        //println!("[{}] TCB INTFLAGS.OVF set @{:08X}", self.name, time);
                         self.regs[TCB_INTFLAGS] |= 0x02;
                     }
 
