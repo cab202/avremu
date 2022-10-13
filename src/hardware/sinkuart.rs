@@ -165,6 +165,7 @@ impl Hardware for SinkUART {
         } else {
             let byte = u8::from_str_radix(event.as_str(), 16).unwrap();
             self.tx(time, byte);
+            println!("[@{:08X}] UART|{}: Tx 0x{:02X}", time, self.name, byte);
         } 
     }
         
