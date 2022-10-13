@@ -142,6 +142,7 @@ impl Device {
                 cpuint.borrow_mut().add_source(11, tca0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x20); //CMP1
                 cpuint.borrow_mut().add_source(12, tca0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x40); //CMP2
                 cpuint.borrow_mut().add_source(13, tcb0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x03);
+                cpuint.borrow_mut().add_source(16, spi0.clone() as Rc<RefCell<dyn InterruptSource>>, 0xF1);
                 cpuint.borrow_mut().add_source(17, usart0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x80); //RCX
                 cpuint.borrow_mut().add_source(18, usart0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x20); //DRE
                 cpuint.borrow_mut().add_source(19, usart0.clone() as Rc<RefCell<dyn InterruptSource>>, 0x40); //TXC
