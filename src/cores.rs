@@ -1236,7 +1236,8 @@ impl Core {
 
         match op {
             // Control
-            BREAK   => {println!("[END] BREAK instruction encountered."); return false}, // NOP if OCD disabled
+            //BREAK   => {println!("[END] BREAK instruction encountered."); return false}, // NOP if OCD disabled
+            BREAK   => {}, // Break instruction ignored for Tut09
             NOP     => {},
             SLEEP   => {println!("[SLEEP]")}, // Not implemented
             WDR     => {}, // Not implemented
