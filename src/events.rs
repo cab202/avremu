@@ -5,7 +5,7 @@ use regex::Regex;
 pub type Events = Vec<Event>;
 
 pub struct Event {
-    pub time: usize,
+    pub time: u64,
     pub device: String,
     pub event: String
 }
@@ -16,14 +16,14 @@ impl Event {
 
         let mut events = Vec::new();
 
-        let re_events = Regex::new("@([0-9A-F-a-f]{8})\\s+(.+):\\s+(.+)\\n+").unwrap();
+        let re_events = Regex::new("@([0-9A-F-a-f].+)\\s+(.+):\\s+(.+)\\n+").unwrap();
         let caps_events = re_events.captures_iter(&file_events);
     
         for cap in caps_events {
             
             events.push(
                 Event {
-                    time: usize::from_str_radix(&cap[1], 16).unwrap(), 
+                    time: u64::from_str_radix(&cap[1], 16).unwrap(), 
                     device: cap[2].trim().to_owned(),
                     event: cap[3].trim().to_owned(),
                 }
