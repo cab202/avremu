@@ -241,7 +241,7 @@ impl MemoryMapped for Port {
 }
 
 impl Hardware for Port {
-    fn update(&mut self, _time: usize) {
+    fn update(&mut self, _time: u64) {
         for i in 0..8 {
             match self.pio[i].net.borrow().state {
                 NetState::High => self.regs[PORT_IN] |= 1u8 << i,

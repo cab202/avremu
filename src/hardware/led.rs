@@ -41,7 +41,7 @@ impl Led {
 }
 
 impl Hardware for Led {
-    fn update(&mut self, time: usize) {
+    fn update(&mut self, time: u64) {
         let new_state: LedState;
         match self.net.borrow().state {
             NetState::High => if self.active_high {new_state = LedState::On} else {new_state = LedState::Off},

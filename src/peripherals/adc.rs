@@ -295,7 +295,7 @@ impl InterruptSource for Adc {
 }
 
 impl Clocked for Adc {
-    fn tick(&mut self, time: usize) {
+    fn tick(&mut self, time: u64) {
         // If not enabled we do nothing
         if self.enabled {
             if self.clk_divider > 0 {

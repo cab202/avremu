@@ -160,7 +160,7 @@ impl InterruptSource for Tcb {
 }
 
 impl Clocked for Tcb {
-    fn tick(&mut self, time: usize) {
+    fn tick(&mut self, time: u64) {
         // If not enabled we do nothing
         if self.enabled {
             match self.clksel {

@@ -13,7 +13,7 @@ pub struct Display {
     net_en: Rc<RefCell<Net>>,
     net_digit: Rc<RefCell<Net>>,
     enabled: bool,
-    state: VecDeque<(u8, usize)>,
+    state: VecDeque<(u8, u64)>,
     state_2d: String
 }
 
@@ -152,7 +152,7 @@ impl Display {
 }
 
 impl Hardware for Display {
-    fn update(&mut self, time: usize) {
+    fn update(&mut self, time: u64) {
         self.enabled = self.net_en.borrow().state.eq(&NetState::High);
         //println!("DISP: Enable is {}", self.enabled);
         let state = self.state.front().unwrap().0;

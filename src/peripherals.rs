@@ -16,7 +16,7 @@ pub trait InterruptSource {
 }
 
 pub trait Clocked {
-    fn tick(&mut self, time: usize) {
+    fn tick(&mut self, time: u64) {
 
     }
 }

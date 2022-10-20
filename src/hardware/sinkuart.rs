@@ -34,9 +34,9 @@ pub struct SinkUART {
     tx_bit: u8,
     rx_reg: u16,
     tx_reg: u16,
-    rx_time: usize,
-    tx_time: usize,
-    tics_per_bit: usize,
+    rx_time: u64,
+    tx_time: u64,
+    tics_per_bit: u64,
     out: String, 
     outfile: String
 }
@@ -73,7 +73,7 @@ impl SinkUART {
         fs::write(&self.outfile, &self.out).expect(&format!("Unable to write uart out to {}.", self.outfile));
     }
 
-    fn tx(&mut self, time: usize, byte: u8) {
+    fn tx(&mut self, time: u64, byte: u8) {
         if self.tx_state.eq(&UartState::Idle) {
             let mut b = byte as u16;
             b |= 0x0100;    // stop bit
@@ -87,7 +87,7 @@ impl SinkUART {
 }
 
 impl Hardware for SinkUART {
-    fn update(&mut self, time: usize) {
+    fn update(&mut self, time: u64) {
         let rx_pinstate_new = match self.net_rx.borrow().state {
             NetState::High => RxState::High,
             NetState::Low => RxState::Low,
@@ -159,7 +159,7 @@ impl Hardware for SinkUART {
 
     }
 
-    fn event(&mut self, time: usize, event: &String) {
+    fn event(&mut self, time: u64, event: &String) {
         if event.eq_ignore_ascii_case("flush") {
             self.out_close();
         } else {

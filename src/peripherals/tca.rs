@@ -256,7 +256,7 @@ impl InterruptSource for Tca {
 }
 
 impl Clocked for Tca {
-    fn tick(&mut self, time: usize) {
+    fn tick(&mut self, time: u64) {
         // If not enabled we do nothing
         if self.enabled {
             if self.clk_divider > 0 {

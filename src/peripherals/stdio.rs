@@ -58,11 +58,11 @@ impl MemoryMapped for Stdio {
 }
 
 impl Hardware for Stdio {
-    fn update(&mut self, _time: usize) {
+    fn update(&mut self, _time: u64) {
 
     }
 
-    fn event(&mut self, time: usize, event: &String) {
+    fn event(&mut self, time: u64, event: &String) {
         //TODO: Handle keystrokes
     }
 }

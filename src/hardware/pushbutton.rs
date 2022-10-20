@@ -33,7 +33,7 @@ impl Pushbutton {
         pb
     }
 
-    pub fn press(&mut self, time: usize) {
+    pub fn press(&mut self, time: u64) {
         if !self.state.eq(&PushbuttonState::Pressed) {
             println!("[@{:08X}] PB|{}: {}", time, self.name, "Pressed");
         }
@@ -46,7 +46,7 @@ impl Pushbutton {
         }
     }
 
-    pub fn release(&mut self, time: usize) {
+    pub fn release(&mut self, time: u64) {
         if !self.state.eq(&PushbuttonState::Released) {
             println!("[@{:08X}] PB|{}: {}", time, self.name, "Released");
         }
@@ -57,11 +57,11 @@ impl Pushbutton {
 }
 
 impl Hardware for Pushbutton {
-    fn update(&mut self, _time: usize) {
+    fn update(&mut self, _time: u64) {
         //TODO: Add code for bounce
     }
 
-    fn event(&mut self, time: usize, event: &String) {
+    fn event(&mut self, time: u64, event: &String) {
         if event.eq("PRESS") {
             self.press(time);
         } else if event.eq("RELEASE") {

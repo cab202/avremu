@@ -20,7 +20,7 @@ impl Pot {
         pot
     }
 
-    fn set(&mut self, time: usize, position: f32) {
+    fn set(&mut self, time: u64, position: f32) {
         
         let pos = position.min(1.0).max(0.0);
 
@@ -32,11 +32,11 @@ impl Pot {
 
 impl Hardware for Pot {
 
-    fn update(&mut self, _time: usize) {
+    fn update(&mut self, _time: u64) {
         
     }
 
-    fn event(&mut self, time: usize, event: &String) {
+    fn event(&mut self, time: u64, event: &String) {
         let pos: f32 = event.parse().unwrap();
         self.set(time, pos);
     }

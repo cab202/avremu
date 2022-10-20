@@ -18,9 +18,9 @@ pub struct SinkPwm {
     pin: Rc<RefCell<PinState>>,
     net: Rc<RefCell<Net>>,
     state: SinkPwmState,
-    t_last: usize,
-    t_rise_last: usize,
-    t_fall_last: usize,
+    t_last: u64,
+    t_rise_last: u64,
+    t_fall_last: u64,
     cycle_valid: bool,
     is_dc: bool
 }
@@ -45,7 +45,7 @@ impl SinkPwm {
 }
 
 impl Hardware for SinkPwm {
-    fn update(&mut self, time: usize) {
+    fn update(&mut self, time: u64) {
         let new_state: SinkPwmState;
         match self.net.borrow().state {
             NetState::High => new_state = SinkPwmState::High,

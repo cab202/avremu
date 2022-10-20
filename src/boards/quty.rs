@@ -26,7 +26,7 @@ pub struct QUTy {
     hw: HashMap<String, Box<dyn Hardware>>,
     nets: HashMap<String, Rc<RefCell<Net>>>,
     mcu: Device,
-    time: usize,
+    time: u64,
     events: Events
 }
 

@@ -95,7 +95,7 @@ impl IC74HC595 {
 }
 
 impl Hardware for IC74HC595 {
-    fn update(&mut self, _time: usize) {
+    fn update(&mut self, _time: u64) {
         let state_shcp_new = match self.net_shcp.borrow().state {
             NetState::High => ClockState::High,
             NetState::Low => ClockState::Low,

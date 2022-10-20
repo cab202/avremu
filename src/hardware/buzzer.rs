@@ -18,8 +18,8 @@ pub struct Buzzer {
     pin: Rc<RefCell<PinState>>,
     net: Rc<RefCell<Net>>,
     state: BuzzerState,
-    t_rise_last: usize,
-    t_fall_last: usize,
+    t_rise_last: u64,
+    t_fall_last: u64,
     cycle_valid: bool
 }
 
@@ -41,7 +41,7 @@ impl Buzzer {
 }
 
 impl Hardware for Buzzer {
-    fn update(&mut self, time: usize) {
+    fn update(&mut self, time: u64) {
         let new_state: BuzzerState;
         match self.net.borrow().state {
             NetState::High => new_state = BuzzerState::High,

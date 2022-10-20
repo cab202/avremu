@@ -218,7 +218,7 @@ impl InterruptSource for Spi {
 }
 
 impl Clocked for Spi {
-    fn tick(&mut self, time: usize) {
+    fn tick(&mut self, time: u64) {
         //println!("{} {} {} {}", self.is_enabled(), self.mode(), self.prescaler(), self.is_master());
         // Prescaler
         if self.ps_count == 0 {

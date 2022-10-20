@@ -271,7 +271,7 @@ impl Device {
 
     }
 
-    pub fn tick(&mut self, time: usize) -> bool {
+    pub fn tick(&mut self, time: u64) -> bool {
         let result = self.core.tick();
 
         for dev in &self.clocked {
@@ -281,7 +281,7 @@ impl Device {
         result
     }
 
-    pub fn update(&mut self, time: usize) {
+    pub fn update(&mut self, time: u64) {
         for port in &self.ports {
             port.borrow_mut().update(time);
         }

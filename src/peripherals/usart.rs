@@ -267,7 +267,7 @@ impl InterruptSource for Usart {
 }
 
 impl Clocked for Usart {
-    fn tick(&mut self, _time: usize) {
+    fn tick(&mut self, _time: u64) {
         // new Rx pinstate
         let rx_port_pinstate = if self.mux_alt {
             self.port_alt.borrow().get_pinstate(self.pins_alt[0])
