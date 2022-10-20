@@ -18,7 +18,7 @@ fn main() {
     
     let filename_firmware = &args[1];
     let filename_events = &args[2];
-    let cycle_limit: u64 = args[3].parse().unwrap();
+    let time_limit = u64::from_str_radix(&args[3], 16).unwrap();
 
     let events = Event::from_file(filename_events);
 
@@ -35,20 +35,28 @@ fn main() {
         }
     }
 
-    let mut cycles = 0u64;
+    println!("[RUN] Time limit is {} ns.", time_limit);
 
-    println!("[RUN] Cycle limit is {}.", cycle_limit);
+    let mut time = 0u64;
+    let mut time_step;
+    loop {
+        time_step = quty.step();
 
-    while quty.step() {
-         //Run until break
-         cycles += 1;
-         if cycles == cycle_limit {
-            println!("[END] Cycle limit elapsed.");
+        // Board returns a step time of 0 to indicate termination
+        if time_step == 0 {
+            break;
+        }
+
+        time += time_step;
+
+        // Check time limit
+        if time >= time_limit {
+            println!("[END] Time limit elapsed.");
             break;
          }
     }
 
-    println!("[INFO] Programme terminated after {} cycles.", cycles);
+    println!("[INFO] Programme terminated after {} ns.", time);
 
     quty.mcu_dumpstack();
     quty.core_dumpregs();

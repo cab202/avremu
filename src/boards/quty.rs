@@ -138,7 +138,9 @@ impl QUTy {
         quty  
     }
 
-    pub fn step(&mut self) -> bool {
+    pub fn step(&mut self) -> u64 {
+        let timestep = 300; // Default 300 ns => 3.3 MHz
+
         self.time += 1;
 
         // This block hardcodes control of buzzer output; used in earlier tutorial
@@ -168,7 +170,12 @@ impl QUTy {
             hw.1.update(self.time);
         }
         self.mcu.update(self.time);
-        result
+
+        if result {
+            return timestep;
+        } else {
+            return 0;
+        }
     }
 
     pub fn core_debug(&mut self) {
