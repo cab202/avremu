@@ -141,7 +141,7 @@ impl QUTy {
     pub fn step(&mut self) -> u64 {
         let timestep = 300; // Default 300 ns => 3.3 MHz
 
-        self.time += 1;
+        self.time += timestep;
 
         // This block hardcodes control of buzzer output; used in earlier tutorial
         /*
