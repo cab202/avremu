@@ -6,8 +6,11 @@ use super::memory::MemoryMapped;
 
 use crate::cores::InterruptHandler;
 use crate::hardware::Hardware;
+use crate::peripherals::ClockSource;
 use crate::peripherals::Clocked;
 use crate::peripherals::InterruptSource;
+use crate::peripherals::clkctrl::Clkctrl;
+use crate::peripherals::cpu::Cpu;
 use crate::peripherals::port::{Port, VirtualPort};
 use crate::peripherals::spi::Spi;
 use crate::peripherals::stdio::Stdio;
@@ -38,7 +41,7 @@ pub struct Device {
     pub mm: Rc<RefCell<dyn MemoryMapped>>,
     pub ports: Vec<Rc<RefCell<Port>>>,
     pub stdio: Rc<RefCell<Stdio>>,
-    clock_period: u64,
+    clock_source: Rc<RefCell<dyn ClockSource>>,
     clocked: Vec<Rc<RefCell<dyn Clocked>>>,
     RAMEND: u16
 }
@@ -49,6 +52,12 @@ impl Device {
             DeviceType::ATtiny1626 => {
                 // Constants
                 const RAMEND: u16 = 0x3FFF;
+
+                //Clocking
+                let clkctrl = Rc::new(RefCell::new(Clkctrl::new()));
+
+                //Cpu
+                let cpu = Rc::new(RefCell::new(Cpu::new(vec![clkctrl.clone()])));
 
                 //Memories
                 let flash: Rc<RefCell<dyn MemoryMapped>> =  Rc::new(RefCell::new(Memory::new(16384, 0xFF, 0)));
@@ -127,12 +136,13 @@ impl Device {
                 ))); 
 
                 let clocked = vec![
+                    cpu.clone() as Rc<RefCell<dyn Clocked>>,
                     spi0.clone() as Rc<RefCell<dyn Clocked>>,
                     tca0.clone() as Rc<RefCell<dyn Clocked>>,
                     tcb0.clone() as Rc<RefCell<dyn Clocked>>,
                     adc0.clone() as Rc<RefCell<dyn Clocked>>,
                     usart0.clone() as Rc<RefCell<dyn Clocked>>,
-                    usart1.clone() as Rc<RefCell<dyn Clocked>>,
+                    usart1.clone() as Rc<RefCell<dyn Clocked>>
                 ];
 
                 let stdio = Rc::new(RefCell::new(Stdio::new("STDIO".to_string(), "stdout.txt".to_string())));
@@ -154,8 +164,8 @@ impl Device {
                 cpuint.borrow_mut().add_source(28, usart1.clone() as Rc<RefCell<dyn InterruptSource>>, 0x40); //TXC
 
                 //TODO
-                let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));
-                let clkctrl: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x1D, 0x00, 0)));
+                //let cpu: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x10, 0x00, 0)));
+                //let clkctrl: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x1D, 0x00, 0)));
                 //let porta: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
                 //let portb: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
                 //let portc: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(Memory::new(0x18, 0x00, 0)));
@@ -174,10 +184,10 @@ impl Device {
                 mm.add(0x0004, vportb.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0004] VPORTB 
                 mm.add(0x0008, vportc.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0008] VPORTC 
                 mm.add(0x001C, Rc::clone(&gpio));       //[0x001C] GPIO (DONE)
-                mm.add(0x0030, Rc::clone(&cpu));        //[0x0030] CPU (TODO)
+                mm.add(0x0030, cpu.clone() as Rc<RefCell<dyn MemoryMapped>>);        //[0x0030] CPU (partial)
                 //[0x0040] RSTCTRL 
                 mm.add(0x0050, Rc::clone(&slpctrl));    //[0x0050] SLPCTRL (not implemented) 
-                mm.add(0x0060, Rc::clone(&clkctrl));    //[0x0060] CLKCTRL (TODO)
+                mm.add(0x0060, clkctrl.clone() as Rc<RefCell<dyn MemoryMapped>>);    //[0x0060] CLKCTRL
                 mm.add(0x0080, Rc::clone(&bod));        //[0x0080] BOD (not implemented) 
                 //[0x00A0] VREF 
                 //[0x0100] WDT 
@@ -229,7 +239,7 @@ impl Device {
                     sram: sram,
                     mm: mm,
                     ports: ports,
-                    clock_period: 300,
+                    clock_source: clkctrl.clone() as Rc<RefCell<dyn ClockSource>>,
                     clocked: clocked,
                     stdio: stdio,
                     RAMEND
@@ -281,12 +291,9 @@ impl Device {
         }
 
         if result {
-            // TODO: determine clock period from device
-            // 300 ns => defualt 3.3 MHz
-            return 300;
+            self.clock_source.borrow().clock_period()
         } else {
-            // Flag termination by core
-            return 0;
+            0 // Flag termination by core
         }
     }
 

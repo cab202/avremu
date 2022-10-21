@@ -6,6 +6,8 @@ pub mod tcb;
 pub mod tca;
 pub mod adc;
 pub mod usart;
+pub mod clkctrl;
+pub mod cpu;
 
 pub trait InterruptSource {
     fn interrupt(&mut self, mask: u8) -> bool {
@@ -19,5 +21,15 @@ pub trait Clocked {
     fn tick(&mut self, time: u64) {
 
     }
+}
+
+pub trait Ccp {
+    fn ccp(&mut self, enabled: bool) {
+
+    }
+}
+
+pub trait ClockSource {
+    fn clock_period(&self) -> u64;
 }
 
