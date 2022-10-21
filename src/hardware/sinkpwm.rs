@@ -22,7 +22,8 @@ pub struct SinkPwm {
     t_rise_last: u64,
     t_fall_last: u64,
     cycle_valid: bool,
-    is_dc: bool
+    is_dc: bool,
+    desc: String
 }
 
 impl SinkPwm {
@@ -36,7 +37,8 @@ impl SinkPwm {
             t_rise_last: 0,
             t_fall_last: 0,
             cycle_valid: false,
-            is_dc: true
+            is_dc: true,
+            desc: String::new()
         };
         sink.net.borrow_mut().connect(Rc::downgrade(&sink.pin));
         sink.update(0);
@@ -61,9 +63,9 @@ impl Hardware for SinkPwm {
                 if !self.is_dc {
                     self.is_dc = true;
                     match self.state {
-                        SinkPwmState::Low => println!("[@{:012X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, 0.0, 0.0),
-                        SinkPwmState::High => println!("[@{:012X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, 0.0, 100.0),
-                        SinkPwmState::Undefined => println!("[@{:012X}] PWM|{}: Undefined", time, self.name),
+                        SinkPwmState::Low => println!("[@{:012X}] PWM|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.name, 0.0, 0.0),
+                        SinkPwmState::High => println!("[@{:012X}] PWM|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.name, 0.0, 100.0),
+                        SinkPwmState::Undefined => println!("[@{:012X}] PWM|{}: Undefined", self.t_last, self.name),
                     }
                 }
             }
@@ -75,9 +77,18 @@ impl Hardware for SinkPwm {
                     let ppw = self.t_fall_last - self.t_rise_last;
                     let f = 1e9/f64::from(diff as i32);
                     let duty = 100.0*f64::from(ppw as i32)/f64::from(diff as i32);
-                    if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
-                        println!("[@{:012X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, f, duty);
+                    if self.cycle_valid {
+                        let desc_new = format!("{:.1} Hz, {:.1} % duty cycle", f, duty);
+                        if self.desc.ne(&desc_new) {
+                            println!("[@{:012X}] PWM|{}: {}", time, self.name, desc_new);
+                        }
+                        self.desc = desc_new;
                     }
+                    /*
+                    if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
+                        println!("[@{:012X}] PWM|{}: {:.1} Hz, {:.1} % duty cycle", time, self.name, f, duty);
+                    }
+                    */
                     self.t_rise_last = time;
                     if !self.cycle_valid {
                         self.cycle_valid = true;
