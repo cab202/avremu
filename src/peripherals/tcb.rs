@@ -63,7 +63,7 @@ impl MemoryMapped for Tcb {
 
     fn read(&mut self, address: usize) -> (u8, usize) {
         match address {
-            TCB_INTFLAGS..=TCB_TEMP => (self.regs[address], 0),
+            TCB_CTRLA..=TCB_TEMP => (self.regs[address], 0),
             TCB_CCMPL => { self.regs[TCB_TEMP] = self.regs[TCB_CCMPH]; (self.regs[TCB_CCMPL], 0) },
             TCB_CCMPH=>  (self.regs[TCB_TEMP], 0),
             TCB_CNTL => { self.regs[TCB_TEMP] = self.regs[TCB_CNTH]; (self.regs[TCB_CNTL], 0) },
