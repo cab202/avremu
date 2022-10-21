@@ -44,6 +44,7 @@ impl Clkctrl {
 
         if self.regs[CLKCTRL_MCLKCTRLB] & 0x1 == 0 {
             self.clock_period = period;
+            println!("[INFO] CLK_MAIN changed to {:.3} MHz.", 1e3/(f64::from(self.clock_period as u32)));
             return;
         }
 
@@ -66,6 +67,7 @@ impl Clkctrl {
             }
         }
         self.clock_period = period*pdiv;
+        println!("[INFO] CLK_MAIN changed to {:.3} MHz.", 1e3/(f64::from(self.clock_period as u32)));
 
     }
 }
