@@ -20,7 +20,8 @@ pub struct Buzzer {
     state: BuzzerState,
     t_rise_last: u64,
     t_fall_last: u64,
-    cycle_valid: bool
+    cycle_valid: bool,
+    desc: String
 }
 
 impl Buzzer {
@@ -32,7 +33,8 @@ impl Buzzer {
             state: BuzzerState::Undefined,
             t_rise_last: 0,
             t_fall_last: 0,
-            cycle_valid: false
+            cycle_valid: false,
+            desc: String::new()
         };
         buzzer.net.borrow_mut().connect(Rc::downgrade(&buzzer.pin));
         buzzer.update(0);
@@ -55,9 +57,16 @@ impl Hardware for Buzzer {
                     let ppw = self.t_fall_last - self.t_rise_last;
                     let f = 1e9/f64::from(diff as i32);
                     let duty = 100.0*f64::from(ppw as i32)/f64::from(diff as i32);
-                    if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
-                        println!("[@{:012X}] BUZZER|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, f, duty);
+                    if self.cycle_valid {
+                        let desc_new = format!("{:.1} Hz, {:.1} % duty cycle", f, duty);
+                        if self.desc.ne(&desc_new) {
+                            println!("[@{:012X}] BUZZER|{}: {}", time, self.name, desc_new);
+                        }
+                        self.desc = desc_new;
                     }
+                    //if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
+                    //    println!("[@{:012X}] BUZZER|{}: {:.1} Hz, {:.1} % duty cycle", time, self.name, f, duty);
+                    //}
                     self.t_rise_last = time;
                     if !self.cycle_valid {
                         self.cycle_valid = true;
