@@ -38,6 +38,7 @@ pub struct Device {
     pub mm: Rc<RefCell<dyn MemoryMapped>>,
     pub ports: Vec<Rc<RefCell<Port>>>,
     pub stdio: Rc<RefCell<Stdio>>,
+    clock_period: u64,
     clocked: Vec<Rc<RefCell<dyn Clocked>>>,
     RAMEND: u16
 }
@@ -228,6 +229,7 @@ impl Device {
                     sram: sram,
                     mm: mm,
                     ports: ports,
+                    clock_period: 300,
                     clocked: clocked,
                     stdio: stdio,
                     RAMEND
@@ -271,14 +273,21 @@ impl Device {
 
     }
 
-    pub fn tick(&mut self, time: u64) -> bool {
+    pub fn tick(&mut self, time: u64) -> u64 {
         let result = self.core.tick();
 
         for dev in &self.clocked {
             dev.borrow_mut().tick(time);
         }
 
-        result
+        if result {
+            // TODO: determine clock period from device
+            // 300 ns => defualt 3.3 MHz
+            return 300;
+        } else {
+            // Flag termination by core
+            return 0;
+        }
     }
 
     pub fn update(&mut self, time: u64) {

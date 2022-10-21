@@ -139,18 +139,7 @@ impl QUTy {
     }
 
     pub fn step(&mut self) -> u64 {
-        let timestep = 300; // Default 300 ns => 3.3 MHz
-
-        self.time += timestep;
-
-        // This block hardcodes control of buzzer output; used in earlier tutorial
-        /*
-        match self.time % 16384 {
-            0 => self.mcu.ports[1].borrow_mut().po_out(0, true),
-            8192 => self.mcu.ports[1].borrow_mut().po_out(0, false),
-            _ => {}
-        }
-        */
+        //let timestep = 300; // Default 300 ns => 3.3 MHz
 
         if !self.events.is_empty() {
             while self.time >= self.events[0].time {
@@ -162,7 +151,7 @@ impl QUTy {
             }
         }
 
-        let result = self.mcu.tick(self.time);
+        let timestep = self.mcu.tick(self.time);
         for net in &self.nets {
             net.1.borrow_mut().update();
         }
@@ -171,11 +160,10 @@ impl QUTy {
         }
         self.mcu.update(self.time);
 
-        if result {
-            return timestep;
-        } else {
-            return 0;
-        }
+        // Update the time at the end (once we know what the micro step was)
+        self.time += timestep;
+
+        timestep
     }
 
     pub fn core_debug(&mut self) {
