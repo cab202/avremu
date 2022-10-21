@@ -58,8 +58,8 @@ fn main() {
 
     println!("[INFO] Programme terminated after {} ns.", time);
 
-    quty.mcu_dumpstack();
-    quty.core_dumpregs();
-    quty.mcu_write_stdout();
+    //quty.mcu_dumpstack();
+    //quty.core_dumpregs();
+    //quty.mcu_write_stdout();
     
 }
