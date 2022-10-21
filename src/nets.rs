@@ -109,7 +109,7 @@ impl Net {
 
         if self.state != state_new {
             if self.state.eq(&NetState::Undefined) {
-                println!("[NET] {}: {:?} => {:?}", self.name, self.state, state_new);
+                //println!("[NET] {}: {:?} => {:?}", self.name, self.state, state_new);
             }
         }
         self.state = state_new;
