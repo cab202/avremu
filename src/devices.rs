@@ -268,14 +268,14 @@ impl Device {
                 let hex = Reader::new(&s);
                 for r in hex {
                     if let Record::Data{offset, value} = r.unwrap() {
-                        print!("[HEX] 0x{:04X} Writing {} bytes.", offset, value.len());
+                        //print!("[HEX] 0x{:04X} Writing {} bytes.", offset, value.len());
                         let mut address = usize::from(offset);
                         for b in value {
-                            print!(" {:02X}", b);
+                            //print!(" {:02X}", b);
                             self.flash.borrow_mut().write(address, b);
                             address += 1;
                         }
-                        println!("");
+                        //println!("");
                     }
                 }
             }
