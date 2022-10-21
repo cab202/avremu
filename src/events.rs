@@ -16,7 +16,7 @@ impl Event {
 
         let mut events = Vec::new();
 
-        let re_events = Regex::new("@([0-9A-F-a-f].+)\\s+(.+):\\s+(.+)\\n+").unwrap();
+        let re_events = Regex::new("@([0-9A-F-a-f]+)\\s+(.+):\\s+(.+)\\n+").unwrap();
         let caps_events = re_events.captures_iter(&file_events);
     
         for cap in caps_events {
