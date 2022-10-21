@@ -14,7 +14,8 @@ pub struct Display {
     net_digit: Rc<RefCell<Net>>,
     enabled: bool,
     state: VecDeque<(u8, u64)>,
-    state_2d: String
+    state_2d: String,
+    state_1d: String
 }
 
 impl Display {
@@ -45,7 +46,8 @@ impl Display {
             net_digit: Rc::new(RefCell::new(Net::new("".to_string()))),
             enabled: true, 
             state: VecDeque::from(vec!((0,0), (0,0), (0,0))),
-            state_2d: "".to_string()
+            state_2d: "".to_string(),
+            state_1d: "".to_string()
         }
     }
 
@@ -147,7 +149,44 @@ impl Display {
         let freq = 1e9/(period as f64);
         let duty = 100.0*(inton as f64)/(period as f64);
                 
-        format!("{} ({:.0} Hz, {:.0} %)", disp, freq, duty)
+        format!("{} ({:.1} Hz, {:.1} %)", disp, freq, duty)
+    }
+
+    fn decode_1d(&self) -> String {
+        let on_first = (self.state.front().unwrap().0 & 0x7F) != 0x7F;
+        let on;
+        if on_first {
+            //LHS first
+            on = self.state.front().unwrap();
+        } else {
+            on = self.state.get(1).unwrap();
+        }
+
+        let mut disp = String::new();
+        disp.push_str(&Self::seg_to_char(on.0));
+        if on.0 & 0x80 == 0 {
+            disp.push_str(" (LHS)");
+        } else {
+            disp.push_str(" (RHS)");
+        }
+        
+
+        let time0 = self.state.get(0).unwrap().1;
+        let time1 = self.state.get(1).unwrap().1;
+        let time2 = self.state.get(2).unwrap().1;
+
+        let period = time0-time2;
+        let inton;
+        if on_first {
+            inton = time1-time2; 
+        } else {
+            inton = time0-time1; 
+        }
+
+        let freq = 1e9/(period as f64);
+        let duty = 100.0*(inton as f64)/(period as f64);
+                
+        format!("{} ({:.1} Hz, {:.1} %)", disp, freq, duty)
     }
 }
 
@@ -180,14 +219,24 @@ impl Hardware for Display {
             self.state.push_front((state_new, time));
             self.state.pop_back();
 
-            let valid_2d_cycle = self.state.front().unwrap().0 == self.state.back().unwrap().0;
+            let valid_2d_cycle = (self.state.front().unwrap().0 == self.state.back().unwrap().0) & (((self.state.front().unwrap().0 ^ self.state.get(1).unwrap().0) & 0x80) == 0x80);
             //println!("[DISP] Front: {:02X}, Back: {:02X}", self.state.front().unwrap().0, self.state.back().unwrap().0);
-            
+            let valid_1d_cycle = 
+                (self.state.front().unwrap().0 == self.state.back().unwrap().0) & 
+                ((self.state.front().unwrap().0 & 0x7F == 0x7F) | (self.state.get(1).unwrap().0 & 0x7F == 0x7F)) & 
+                (((self.state.front().unwrap().0 ^ self.state.get(1).unwrap().0) & 0x80) == 0);
+
             if valid_2d_cycle {
                 let state_2d_new = self.decode_2d();
                 if self.state_2d.ne(&state_2d_new) {
                     self.state_2d = state_2d_new;
                     println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_2d);
+                }
+            } else if valid_1d_cycle {
+                let state_1d_new = self.decode_1d();
+                if self.state_1d.ne(&state_1d_new) {
+                    self.state_1d = state_1d_new;
+                    println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_1d);
                 }
             } else if print_state {
                 println!("[@{:012X}] DISP|{}: {}", time, self.name, self.decode());
