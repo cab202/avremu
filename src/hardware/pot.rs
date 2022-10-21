@@ -24,7 +24,7 @@ impl Pot {
         
         let pos = position.min(1.0).max(0.0);
 
-        println!("[@{:08X}] POT|{}: {:.3}", time, self.name, pos);
+        println!("[@{:012X}] POT|{}: {:.3}", time, self.name, pos);
         
         *self.pin.borrow_mut() = PinState::DriveAnalog(3.3*pos);
     }

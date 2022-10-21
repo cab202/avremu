@@ -56,14 +56,14 @@ impl Hardware for SinkPwm {
             self.t_last = time;
             self.is_dc = false;
         } else {
-            if time - self.t_last > 166667 {
+            if time - self.t_last > 50000000 {
                 // Greater than 50ms elapsed, assume DC
                 if !self.is_dc {
                     self.is_dc = true;
                     match self.state {
-                        SinkPwmState::Low => println!("[@{:08X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, 0.0, 0.0),
-                        SinkPwmState::High => println!("[@{:08X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, 0.0, 100.0),
-                        SinkPwmState::Undefined => println!("[@{:08X}] PWM|{}: Undefined", time, self.name),
+                        SinkPwmState::Low => println!("[@{:012X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, 0.0, 0.0),
+                        SinkPwmState::High => println!("[@{:012X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, 0.0, 100.0),
+                        SinkPwmState::Undefined => println!("[@{:012X}] PWM|{}: Undefined", time, self.name),
                     }
                 }
             }
@@ -73,10 +73,10 @@ impl Hardware for SinkPwm {
                 if new_state.eq(&SinkPwmState::High) {
                     let diff = time - self.t_rise_last;
                     let ppw = self.t_fall_last - self.t_rise_last;
-                    let f = 3333333.333/f64::from(diff as i32);
+                    let f = 1e9/f64::from(diff as i32);
                     let duty = 100.0*f64::from(ppw as i32)/f64::from(diff as i32);
                     if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
-                        println!("[@{:08X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, f, duty);
+                        println!("[@{:012X}] PWM|{}: {:.0} Hz, {:.1} % duty cycle", time, self.name, f, duty);
                     }
                     self.t_rise_last = time;
                     if !self.cycle_valid {

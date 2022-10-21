@@ -49,7 +49,7 @@ impl Hardware for Led {
             _ => new_state = LedState::Undefined
         }
         if !self.state.eq(&new_state) {
-            println!("[@{:08X}] LED|{}: {:?}", time, self.name, new_state);
+            println!("[@{:012X}] LED|{}: {:?}", time, self.name, new_state);
             self.state = new_state;
         } 
     }

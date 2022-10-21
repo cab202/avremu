@@ -144,7 +144,7 @@ impl Display {
             inton = time0-time1; 
         }
 
-        let freq = 3333333.3/(period as f64);
+        let freq = 1e9/(period as f64);
         let duty = 100.0*(inton as f64)/(period as f64);
                 
         format!("{} ({:.0} Hz, {:.0} %)", disp, freq, duty)
@@ -187,10 +187,10 @@ impl Hardware for Display {
                 let state_2d_new = self.decode_2d();
                 if self.state_2d.ne(&state_2d_new) {
                     self.state_2d = state_2d_new;
-                    println!("[@{:08X}] DISP|{}: {}", time, self.name, self.state_2d);
+                    println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_2d);
                 }
             } else if print_state {
-                println!("[@{:08X}] DISP|{}: {}", time, self.name, self.decode());
+                println!("[@{:012X}] DISP|{}: {}", time, self.name, self.decode());
             }
         }  
 
