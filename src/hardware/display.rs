@@ -164,7 +164,7 @@ impl Display {
 
         let mut disp = String::new();
         disp.push_str(&Self::seg_to_char(on.0));
-        if on.0 & 0x80 == 0 {
+        if on.0 & 0x80 != 0 {
             disp.push_str(" (LHS)");
         } else {
             disp.push_str(" (RHS)");
