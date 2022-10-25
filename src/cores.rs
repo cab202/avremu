@@ -35,6 +35,7 @@ pub struct Core {
     pub progmem: Rc<RefCell<dyn MemoryMapped>>,
     busy: u8,
     interrupt_handler: Rc<RefCell<dyn InterruptHandler>>,
+    interupt_inhibit: bool,
     debug: bool
 }
 
@@ -55,6 +56,7 @@ impl Core {
             ds,
             progmem,
             interrupt_handler,
+            interupt_inhibit: false,
             busy: 0,
             debug: false
         }
@@ -864,7 +866,8 @@ impl Core {
         // Ack interrupt
         self.interrupt_handler.borrow_mut().reti();
 
-        //I bit in SREG not set for AVRxt 
+        //I bit in SREG not set for AVRxt
+        self.interupt_inhibit = true; // prevent imediate servicing of another interrupt
     }
 
     fn rjmp(&mut self, offset: i16) {
@@ -1206,20 +1209,25 @@ impl Core {
         }
 
         // HANDLE INTERRUPTS
-
-        // Interrupts enabled
-        if self.get_sreg_bit(BitSREG::I) {
-            let vector = self.interrupt_handler.borrow_mut().service_pending();
-            match vector {
-                Some(address) => {
-                    let mut ds = self.ds.borrow_mut();
-                    ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
-                    ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
-                    self.pc = address as u16;
-                    self.busy = 4;  // 2 cycles to to push PC + 3 cycles for jmp to vector
-                    return true;
+        
+        if self.interupt_inhibit {
+            // After reti, core will always execute one instruction before another interrupt
+            self.interupt_inhibit = false;
+        } else {
+            // Interrupts enabled
+            if self.get_sreg_bit(BitSREG::I) {
+                let vector = self.interrupt_handler.borrow_mut().service_pending();
+                match vector {
+                    Some(address) => {
+                        let mut ds = self.ds.borrow_mut();
+                        ds.write(usize::from(self.sp), (self.pc) as u8); self.sp -= 1;
+                        ds.write(usize::from(self.sp), ((self.pc)>>8) as u8); self.sp -= 1;
+                        self.pc = address as u16;
+                        self.busy = 4;  // 2 cycles to to push PC + 3 cycles for jmp to vector
+                        return true;
+                    }
+                    None => {}
                 }
-                None => {}
             }
         }
 

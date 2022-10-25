@@ -74,9 +74,12 @@ pub struct Tca {
 
 impl Tca {
     pub fn new(name: String, port: Rc<RefCell<Port>>, pins: [u8; 3], pins_alt: [u8; 3]) -> Self {
+        let mut regs = [0; 0x3E];
+        regs[TCA_PERL] = 0xFF;
+        regs[TCA_PERH] = 0xFF;
         Tca {
             name,
-            regs: [0; 0x3E],
+            regs: regs,
             enabled: false,
             clksel: TCA_CLKSEL::DIV1,
             cntmode: TCA_MODE::NORMAL,
