@@ -140,6 +140,7 @@ impl Device {
                     spi0.clone() as Rc<RefCell<dyn Clocked>>,
                     tca0.clone() as Rc<RefCell<dyn Clocked>>,
                     tcb0.clone() as Rc<RefCell<dyn Clocked>>,
+                    tcb1.clone() as Rc<RefCell<dyn Clocked>>,
                     adc0.clone() as Rc<RefCell<dyn Clocked>>,
                     usart0.clone() as Rc<RefCell<dyn Clocked>>,
                     usart1.clone() as Rc<RefCell<dyn Clocked>>
