@@ -20,7 +20,9 @@ pub struct Buzzer {
     state: BuzzerState,
     t_rise_last: u64,
     t_fall_last: u64,
+    t_last: u64,
     cycle_valid: bool,
+    is_dc: bool,
     desc: String
 }
 
@@ -33,7 +35,9 @@ impl Buzzer {
             state: BuzzerState::Undefined,
             t_rise_last: 0,
             t_fall_last: 0,
+            t_last: 0,
             cycle_valid: false,
+            is_dc: false,
             desc: String::new()
         };
         buzzer.net.borrow_mut().connect(Rc::downgrade(&buzzer.pin));
@@ -49,6 +53,21 @@ impl Hardware for Buzzer {
             NetState::High => new_state = BuzzerState::High,
             NetState::Low => new_state = BuzzerState::Low,
             _ => new_state = BuzzerState::Undefined
+        }
+        if !self.state.eq(&new_state) {
+            self.t_last = time;
+            self.is_dc = false;
+        } else {
+            if time - self.t_last > 50000000 {
+                // Greater than 50ms elapsed, assume DC
+                if !self.is_dc {
+                    self.is_dc = true;
+                    match self.state {
+                        BuzzerState::Low | BuzzerState::Undefined => println!("[@{:012X}] BUZZER|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.name, 0.0, 0.0),
+                        BuzzerState::High => println!("[@{:012X}] BUZZER|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.name, 0.0, 100.0)
+                    }
+                }
+            }
         }
         match self.state {
             BuzzerState::Low => {

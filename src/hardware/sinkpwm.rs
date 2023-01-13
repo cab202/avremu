@@ -80,7 +80,7 @@ impl Hardware for SinkPwm {
                     if self.cycle_valid {
                         let desc_new = format!("{:.1} Hz, {:.1} % duty cycle", f, duty);
                         if self.desc.ne(&desc_new) {
-                            println!("[@{:012X}] PWM|{}: {}", time, self.name, desc_new);
+                            println!("[@{:012X}] PWM|{}: {}", self.t_rise_last, self.name, desc_new);
                         }
                         self.desc = desc_new;
                     }
