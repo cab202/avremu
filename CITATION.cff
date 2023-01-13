@@ -4,6 +4,7 @@ message: >-
   If you use this software, please cite it using the
   metadata from this file.
 type: software
+date-released: "2023-01-13"
 authors:
   - given-names: Mark A. H.
     family-names: Broadmeadow
