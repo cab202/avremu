@@ -5,10 +5,9 @@ message: >-
   metadata from this file.
 type: software
 authors:
-  - given-names: Mark Andrew Harry
+  - given-names: Mark A. H.
     family-names: Broadmeadow
     email: mark.broadmeadow@qut.edu.au
-    name-particle: Mark A. H.
     affiliation: Queensland University of Technology (QUT)
     orcid: 'https://orcid.org/0000-0001-7041-5904'
 abstract: >-
