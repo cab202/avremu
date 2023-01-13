@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: avremu
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Mark Andrew Harry
+    family-names: Broadmeadow
+    email: mark.broadmeadow@qut.edu.au
+    name-particle: Mark A. H.
+    affiliation: Queensland University of Technology (QUT)
+    orcid: 'https://orcid.org/0000-0001-7041-5904'
+abstract: >-
+  Emulator for the ATtiny1626 microcontroller and
+  QUTy development board. Developed for support of
+  learning and teaching in CAB202 Microprocessors and
+  Digital Systems.
+license: MIT
