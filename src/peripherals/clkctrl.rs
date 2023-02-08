@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
 use crate::memory::MemoryMapped;
 
 use super::{Ccp, ClockSource};
@@ -9,10 +6,10 @@ const CLKCTRL_MCLKCTRLA:    usize = 0x00;
 const CLKCTRL_MCLKCTRLB:    usize = 0x01;
 const CLKCTRL_MCLKLOCK:     usize = 0x02;
 const CLKCTRL_MCLKSTATUS:   usize = 0x03;
-const CLKCTRL_OSC20MCTRLA:  usize = 0x10;
-const CLKCTRL_OSC20MCALIBA: usize = 0x11;
-const CLKCTRL_OSC20MCALIBB: usize = 0x12;
-const CLKCTRL_OSC32KCTRLA:  usize = 0x18;
+const _CLKCTRL_OSC20MCTRLA:  usize = 0x10;
+const _CLKCTRL_OSC20MCALIBA: usize = 0x11;
+const _CLKCTRL_OSC20MCALIBB: usize = 0x12;
+const _CLKCTRL_OSC32KCTRLA:  usize = 0x18;
 const CLKCTRL_XOSC32KCTRLA: usize = 0x1C;
 
 pub struct Clkctrl {

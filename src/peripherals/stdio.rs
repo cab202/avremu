@@ -8,6 +8,7 @@ const STDIO_OUT:    usize = 0x00;
 const STDIO_IN:     usize = 0x01;
 const STDIO_AVAIL:  usize = 0x02;
 
+#[allow(dead_code)]
 pub struct Stdio {
     name: String,
     out: String,
@@ -62,7 +63,7 @@ impl Hardware for Stdio {
 
     }
 
-    fn event(&mut self, time: u64, event: &String) {
+    fn event(&mut self, _time: u64, _event: &String) {
         //TODO: Handle keystrokes
     }
 }

@@ -184,16 +184,16 @@ impl Device {
                 mm.add(0x0000, vporta.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0000] VPORTA 
                 mm.add(0x0004, vportb.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0004] VPORTB 
                 mm.add(0x0008, vportc.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0008] VPORTC 
-                mm.add(0x001C, Rc::clone(&gpio));       //[0x001C] GPIO (DONE)
+                mm.add(0x001C, Rc::clone(&gpio));                               //[0x001C] GPIO (DONE)
                 mm.add(0x0030, cpu.clone() as Rc<RefCell<dyn MemoryMapped>>);        //[0x0030] CPU (partial)
                 //[0x0040] RSTCTRL 
-                mm.add(0x0050, Rc::clone(&slpctrl));    //[0x0050] SLPCTRL (not implemented) 
+                mm.add(0x0050, Rc::clone(&slpctrl));                            //[0x0050] SLPCTRL (not implemented) 
                 mm.add(0x0060, clkctrl.clone() as Rc<RefCell<dyn MemoryMapped>>);    //[0x0060] CLKCTRL
-                mm.add(0x0080, Rc::clone(&bod));        //[0x0080] BOD (not implemented) 
+                mm.add(0x0080, Rc::clone(&bod));                                //[0x0080] BOD (not implemented) 
                 //[0x00A0] VREF 
                 //[0x0100] WDT 
                 mm.add(0x0110, cpuint.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0110] CPUINT 
-                mm.add(0x0120, Rc::clone(&crcscan));    //[0x0120] CRCSCAN (not implemented)
+                mm.add(0x0120, Rc::clone(&crcscan));                            //[0x0120] CRCSCAN (not implemented)
                 //[0x0140] RTC 
                 //[0x0180] EVSYS 
                 //[0x01C0] CCL 
@@ -202,7 +202,7 @@ impl Device {
                 mm.add(0x0440, portc.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0440] PORTC (partial) 
                 //[0x05E0] PORTMUX 
                 mm.add(0x0600, adc0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0600] ADC0 
-                mm.add(0x0680, Rc::clone(&ac0));        //[0x0680] AC0 (not implemented) 
+                mm.add(0x0680, Rc::clone(&ac0));                                //[0x0680] AC0 (not implemented) 
                 mm.add(0x0800, usart0.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0800] USART0 
                 mm.add(0x0820, usart1.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0820] USART1 
                 mm.add(0x08A0, Rc::clone(&twi));                                //[0x08A0] TWI0 (not implemented)
@@ -211,19 +211,19 @@ impl Device {
                 
                 mm.add(0x0A80, tcb0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0A80] TCB0 
                 mm.add(0x0A90, tcb1.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0A90] TCB1 
-                mm.add(0x0F00, Rc::clone(&syscfg));     //[0x0F00] SYSCFG (DONE)
-                mm.add(0x1000, Rc::clone(&nvmctrl));    //[0x1000] NVMCTRL (not implemented) 
+                mm.add(0x0F00, Rc::clone(&syscfg));                             //[0x0F00] SYSCFG (DONE)
+                mm.add(0x1000, Rc::clone(&nvmctrl));                            //[0x1000] NVMCTRL (not implemented) 
                 //[0x1100] SIGROW 
-                mm.add(0x1280, Rc::clone(&fuse));       //[0x1280] FUSE 
+                mm.add(0x1280, Rc::clone(&fuse));                               //[0x1280] FUSE 
                 //[0x128A] LOCKBIT 
-                mm.add(0x1300, Rc::clone(&userrow));    //[0x1300] USERROW
-                mm.add(0x1400, Rc::clone(&eeprom));     //[0x1400] EEPROM (erased, read only)
+                mm.add(0x1300, Rc::clone(&userrow));                            //[0x1300] USERROW
+                mm.add(0x1400, Rc::clone(&eeprom));                             //[0x1400] EEPROM (erased, read only)
                 mm.add(0x1500, stdio.clone() as Rc<RefCell<dyn MemoryMapped>>);
                 //[0x1500-0x33FF] RESERVED
-                mm.add(0x3800, Rc::clone(&sram));       //[0x3400] SRAM (RAMSTART = 0x3800 for 2K)
+                mm.add(0x3800, Rc::clone(&sram));                               //[0x3400] SRAM (RAMSTART = 0x3800 for 2K)
                 //[0x????-0x3FFF] RESERVED (up to 3K SRAM) 
                 //[0x4000-0x7FFF] RESERVED
-                mm.add(0x8000, Rc::clone(&flash));      //[0x8000] FLASH
+                mm.add(0x8000, Rc::clone(&flash));                              //[0x8000] FLASH
                 //[0xBFFF-0xFFFF] RESERVED (up to 32K FLASH)
 
                 let mm: Rc<RefCell<dyn MemoryMapped>> = Rc::new(RefCell::new(mm));

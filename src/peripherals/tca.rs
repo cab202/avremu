@@ -39,6 +39,7 @@ const TCA_CMP1BUFH: usize = 0x3B;
 const TCA_CMP2BUFL: usize = 0x3C;
 const TCA_CMP2BUFH: usize = 0x3D;
 
+#[allow(non_camel_case_types)]
 enum TCA_MODE {
     NORMAL,
     FRQ, 
@@ -48,6 +49,7 @@ enum TCA_MODE {
     DSBOTTOM
 }
 
+#[allow(non_camel_case_types)]
 enum TCA_CLKSEL {
     DIV1,
     DIV2,
@@ -59,6 +61,7 @@ enum TCA_CLKSEL {
     DIV1024
 }
 
+#[allow(dead_code)]
 pub struct Tca {
     name: String, 
     regs: [u8; 0x3E],
@@ -259,7 +262,7 @@ impl InterruptSource for Tca {
 }
 
 impl Clocked for Tca {
-    fn tick(&mut self, time: u64) {
+    fn tick(&mut self, _time: u64) {
         // If not enabled we do nothing
         if self.enabled {
             if self.clk_divider > 0 {
@@ -306,7 +309,7 @@ impl Clocked for Tca {
                                 self.regs[TCA_CMP0H+(i<<1)] = self.regs[TCA_CMP0BUFH+(i<<1)];
                             }
 
-                            self.regs[TCA_CTRLC] |= (1<<i); // Set WO
+                            self.regs[TCA_CTRLC] |= 1<<i; // Set WO
                         }
 
                         self.regs[TCA_CTRLFCLR] &= 0xF0; // update event, clear BV bits

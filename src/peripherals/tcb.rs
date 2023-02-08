@@ -15,6 +15,7 @@ const TCB_CNTH:     usize = 0x0B;
 const TCB_CCMPL:    usize = 0x0C;
 const TCB_CCMPH:    usize = 0x0D;
 
+#[allow(non_camel_case_types)]
 enum TCB_MODE {
     INT,
     TIMEOUT, 
@@ -26,6 +27,7 @@ enum TCB_MODE {
     PWM8
 }
 
+#[allow(non_camel_case_types)]
 enum TCB_CLKSEL {
     DIV1,
     DIV2,
@@ -34,6 +36,7 @@ enum TCB_CLKSEL {
     EVENT
 }
 
+#[allow(dead_code)]
 pub struct Tcb {
     name: String, 
     regs: [u8; 0x0E],
@@ -160,7 +163,7 @@ impl InterruptSource for Tcb {
 }
 
 impl Clocked for Tcb {
-    fn tick(&mut self, time: u64) {
+    fn tick(&mut self, _time: u64) {
         // If not enabled we do nothing
         if self.enabled {
             match self.clksel {

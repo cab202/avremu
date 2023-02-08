@@ -46,6 +46,7 @@ enum UsartState {
     Shift
 }
 
+#[allow(dead_code)]
 pub struct Usart {
     name: String, 
     regs: [u8; 0x0F],

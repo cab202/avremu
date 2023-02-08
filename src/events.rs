@@ -12,12 +12,18 @@ pub struct Event {
 
 impl Event {
     pub fn from_file(filename: &String) -> Events {
-        let file_events = fs::read_to_string(filename).expect("Failed to read events file.");
+        let file_events = fs::read_to_string(filename);
 
         let mut events = Vec::new();
 
+        if file_events.is_err() {
+            println!("[EVENTS] Couldn't open {}. {}", filename, file_events.unwrap_err());
+            return events;
+        }
+
+        let event_str = file_events.unwrap(); 
         let re_events = Regex::new("@([0-9A-F-a-f]+)\\s+(.+):\\s+(.+)\\n+").unwrap();
-        let caps_events = re_events.captures_iter(&file_events);
+        let caps_events = re_events.captures_iter(&event_str);
     
         for cap in caps_events {
             

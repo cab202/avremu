@@ -1,8 +1,8 @@
 {
     "rust-analyzer.runnables.cargoExtraArgs": [
-        "D:\\scratch\\quty_debug\\.pio\\build\\QUTy\\firmware.hex",
-        "D:\\events.txt",
-        "1500000"
+        "firmware.hex",
+        "-e",
+        "events.txt"
     ],
     "cSpell.enableFiletypes": [
         "!rust"

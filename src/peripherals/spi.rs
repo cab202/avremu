@@ -19,6 +19,7 @@ const SPI_PIN_MISO: usize = 1;
 const SPI_PIN_SCK:  usize = 2;
 const SPI_PIN_SS:   usize = 3;
 
+#[allow(dead_code)]
 pub struct Spi {
     name: String,
     regs: [u8; 0x05],
@@ -160,6 +161,7 @@ impl Spi {
         self.regs[SPI_CTRLB] & 0x03
     }
 
+    #[allow(dead_code)]
     fn is_ssd(&self) -> bool {
         self.regs[SPI_CTRLB].view_bits::<Lsb0>()[2] 
     }
@@ -168,6 +170,7 @@ impl Spi {
         self.regs[SPI_CTRLB].view_bits::<Lsb0>()[7] 
     }
 
+    #[allow(dead_code)]
     fn is_bufwr(&self) -> bool {
         self.regs[SPI_CTRLB].view_bits::<Lsb0>()[6] 
     } 
@@ -218,7 +221,7 @@ impl InterruptSource for Spi {
 }
 
 impl Clocked for Spi {
-    fn tick(&mut self, time: u64) {
+    fn tick(&mut self, _time: u64) {
         //println!("{} {} {} {}", self.is_enabled(), self.mode(), self.prescaler(), self.is_master());
         // Prescaler
         if self.ps_count == 0 {

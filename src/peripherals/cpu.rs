@@ -6,8 +6,8 @@ use crate::memory::MemoryMapped;
 use super::{Ccp, Clocked};
 
 const CPU_CCP:  usize = 0x04;
-const CPU_SP:   usize = 0x0D;
-const CP_SREG:  usize = 0x0F;
+const _CPU_SP:   usize = 0x0D;
+const _CP_SREG:  usize = 0x0F;
 
 pub struct Cpu {
     regs: [u8; 0x10],
@@ -56,7 +56,7 @@ impl Clocked for Cpu {
         if self.ccp_ioreg_count > 0 {
             self.ccp_ioreg_count -= 1;
 
-            if (self.ccp_ioreg_count == 0) {
+            if self.ccp_ioreg_count == 0 {
                 for ccp in &self.ccp_ioreg {
                     ccp.borrow_mut().ccp(false);
                 }

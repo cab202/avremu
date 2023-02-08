@@ -23,6 +23,7 @@ pub enum NetState {
     Analog(f32)
 }
 
+#[allow(dead_code)]
 pub struct Net {
     pub state: NetState,
     io: Vec<Weak<RefCell<PinState>>>,

@@ -36,17 +36,19 @@ const ADC_WINLTH:   usize = 0x1D;
 const ADC_WINHTL:   usize = 0x1E;
 const ADC_WINHTH:   usize = 0x1F;
 
+#[allow(non_camel_case_types)]
 #[derive(PartialEq)]
 enum ADC_MODE {
     SINGLE_8BIT,
     SINGLE_12BIT,
-    SERIES, 
-    SERIES_SCALING, 
-    BURST,
-    BURST_SCALING,
+    _SERIES, 
+    _SERIES_SCALING, 
+    _BURST,
+    _BURST_SCALING,
     RESERVED
 }
 
+#[allow(non_camel_case_types)]
 enum ADC_REFSEL {
     VDD,
     VREFA,
@@ -57,6 +59,7 @@ enum ADC_REFSEL {
     RESERVED
 }
 
+#[allow(dead_code)]
 pub struct Adc {
     name: String, 
     regs: [u8; 0x20],
@@ -295,7 +298,7 @@ impl InterruptSource for Adc {
 }
 
 impl Clocked for Adc {
-    fn tick(&mut self, time: u64) {
+    fn tick(&mut self, _time: u64) {
         // If not enabled we do nothing
         if self.enabled {
             if self.clk_divider > 0 {

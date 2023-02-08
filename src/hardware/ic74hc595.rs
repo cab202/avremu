@@ -14,6 +14,7 @@ enum ClockState {
     Undefined
 }
 
+#[allow(dead_code)]
 pub struct IC74HC595 {
     name: String,
     pins_out: [Rc<RefCell<PinState>>; 8],

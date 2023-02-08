@@ -155,6 +155,7 @@ impl Core {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_sp(&self) -> u16 {
         self.sp
     }

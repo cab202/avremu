@@ -121,6 +121,7 @@ impl PortIO {
     }
 }
 
+#[allow(dead_code)]
 pub struct Port {
     name: String,
     pio: [PortIO; 8],

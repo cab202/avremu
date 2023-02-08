@@ -10,7 +10,7 @@ pub mod clkctrl;
 pub mod cpu;
 
 pub trait InterruptSource {
-    fn interrupt(&mut self, mask: u8) -> bool {
+    fn interrupt(&mut self, _mask: u8) -> bool {
         // This function should return the bitwise and of the 
         // corresponding intflag and intctrl registers of the peripheral
         false
@@ -18,13 +18,13 @@ pub trait InterruptSource {
 }
 
 pub trait Clocked {
-    fn tick(&mut self, time: u64) {
+    fn tick(&mut self, _time: u64) {
 
     }
 }
 
 pub trait Ccp {
-    fn ccp(&mut self, enabled: bool) {
+    fn ccp(&mut self, _enabled: bool) {
 
     }
 }
