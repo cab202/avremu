@@ -1,6 +1,11 @@
 [package]
 name = "avremu"
-version = "0.1.0"
+version = "1.0.0"
+authors = ["Mark A. H. Broadmeadow <mark.broadmeadow@qut.edu.au>"]
+description = "Emulator for the ATtiny1626 microcontroller and QUTy development board. Developed for support of learning and teaching in CAB202 Microprocessors and Digital Systems."
+repository = "https://github.com/cab202/avremu"
+license = "MIT"
+publish = false
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,3 +15,4 @@ bitmatch = "0.1.1"
 bitvec = "1.0.1"
 ihex = "3.0.0"
 regex = "1.6.0"
+clap = { version = "4.1.4", features = ["derive"] }
