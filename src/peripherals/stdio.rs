@@ -11,7 +11,7 @@ const STDIO_AVAIL:  usize = 0x02;
 #[allow(dead_code)]
 pub struct Stdio {
     name: String,
-    out: String,
+    out: Vec<u8>,
     outfile: String,
     input: VecDeque<u8>
 }
@@ -20,14 +20,14 @@ impl Stdio {
     pub fn new(name: String, outfile: String) -> Self {
         Stdio {
             name,
-            out: "".to_string(),
+            out: Vec::new(),
             outfile, 
             input: VecDeque::new()
         }
     }
 
     fn out(&mut self, c: u8) {
-        self.out.push(c as char);
+        self.out.push(c);
         //println!("[STDIO] Wrote 0x{:02X} ({})", c as u8, c);
     }
 
