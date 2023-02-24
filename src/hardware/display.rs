@@ -230,16 +230,22 @@ impl Hardware for Display {
                 let state_2d_new = self.decode_2d();
                 if self.state_2d.ne(&state_2d_new) {
                     self.state_2d = state_2d_new;
-                    println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_2d);
+                    if time > 0 {
+                        println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_2d);
+                    }
                 }
             } else if valid_1d_cycle {
                 let state_1d_new = self.decode_1d();
                 if self.state_1d.ne(&state_1d_new) {
                     self.state_1d = state_1d_new;
-                    println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_1d);
+                    if time > 0 {
+                        println!("[@{:012X}] DISP|{}: {}", time, self.name, self.state_1d);
+                    }
                 }
             } else if print_state {
-                println!("[@{:012X}] DISP|{}: {}", time, self.name, self.decode());
+                if time > 0 {
+                    println!("[@{:012X}] DISP|{}: {}", time, self.name, self.decode());
+                }
             }
         }  
 

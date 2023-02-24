@@ -1,7 +1,5 @@
-mod resistor;
 pub mod pushbutton;
 pub mod led;
-pub mod buzzer;
 pub mod ic74hc595;
 pub mod display;
 pub mod sinkpwm;

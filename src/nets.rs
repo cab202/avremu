@@ -1,6 +1,8 @@
 use std::rc::Weak;
 use std::cell::RefCell;
 
+use crate::CLI;
+
 #[derive(Debug)]
 pub enum PinState {
     Open,
@@ -43,7 +45,7 @@ impl Net {
         self.io.push(pin);
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, time: u64) {
         let mut dps = PinState::Open;
 
         //println!("Updating net...");
@@ -109,14 +111,13 @@ impl Net {
         }
 
         if self.state != state_new {
-            if self.state.eq(&NetState::Undefined) {
-                //println!("[NET] {}: {:?} => {:?}", self.name, self.state, state_new);
+            if CLI.net_all | (CLI.net_undef & self.state.eq(&NetState::Undefined)) {
+                if time > 0 {
+                    println!("[@{:012X}] NET|{}: {:?} => {:?}", time, self.name, self.state, state_new)
+                };
             }
         }
         self.state = state_new;
-
-        
-
 
     }
 }

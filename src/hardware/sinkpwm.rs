@@ -15,6 +15,7 @@ enum SinkPwmState {
 
 pub struct SinkPwm {
     name: String,
+    variant: String,
     pin: Rc<RefCell<PinState>>,
     net: Rc<RefCell<Net>>,
     state: SinkPwmState,
@@ -27,9 +28,10 @@ pub struct SinkPwm {
 }
 
 impl SinkPwm {
-    pub fn new(name: String, net: Rc<RefCell<Net>>, pinstate: PinState) -> Self {
+    pub fn new(name: String, variant: String, net: Rc<RefCell<Net>>, pinstate: PinState) -> Self {
         let mut sink = SinkPwm { 
             name,
+            variant,
             pin: Rc::new(RefCell::new(pinstate)),
             net,
             state: SinkPwmState::Undefined,
@@ -62,10 +64,12 @@ impl Hardware for SinkPwm {
                 // Greater than 50ms elapsed, assume DC
                 if !self.is_dc {
                     self.is_dc = true;
-                    match self.state {
-                        SinkPwmState::Low => println!("[@{:012X}] PWM|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.name, 0.0, 0.0),
-                        SinkPwmState::High => println!("[@{:012X}] PWM|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.name, 0.0, 100.0),
-                        SinkPwmState::Undefined => println!("[@{:012X}] PWM|{}: Undefined", self.t_last, self.name),
+                    if self.t_last > 0 {
+                        match self.state {
+                            SinkPwmState::Low => println!("[@{:012X}] {}|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.variant, self.name, 0.0, 0.0),
+                            SinkPwmState::High => println!("[@{:012X}] {}|{}: {:.1} Hz, {:.1} % duty cycle", self.t_last, self.variant, self.name, 0.0, 100.0),
+                            SinkPwmState::Undefined => println!("[@{:012X}] {}|{}: Undefined", self.t_last, self.variant, self.name),
+                        }
                     }
                 }
             }
@@ -80,7 +84,9 @@ impl Hardware for SinkPwm {
                     if self.cycle_valid {
                         let desc_new = format!("{:.1} Hz, {:.1} % duty cycle", f, duty);
                         if self.desc.ne(&desc_new) {
-                            println!("[@{:012X}] PWM|{}: {}", time, self.name, desc_new);
+                            if time > 0 {
+                                println!("[@{:012X}] {}|{}: {}", time, self.variant, self.name, desc_new);
+                            }
                         }
                         self.desc = desc_new;
                     }

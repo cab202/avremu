@@ -12,7 +12,6 @@ use crate::nets::PinState;
 use crate::hardware::Hardware;
 use crate::hardware::led::Led;
 use crate::hardware::pushbutton::Pushbutton;
-use crate::hardware::buzzer::Buzzer;
 use crate::hardware::ic74hc595::IC74HC595;
 use crate::hardware::display::Display;
 use crate::hardware::sinkpwm::SinkPwm;
@@ -112,10 +111,10 @@ impl QUTy {
         hw.insert("S2".to_string(), Box::new(Pushbutton::new("S2".to_string(), false, Rc::clone(nets.get("PA5_BUTTON1").unwrap()))));
         hw.insert("S3".to_string(), Box::new(Pushbutton::new("S3".to_string(), false, Rc::clone(nets.get("PA6_BUTTON2").unwrap()))));
         hw.insert("S4".to_string(), Box::new(Pushbutton::new("S4".to_string(), false, Rc::clone(nets.get("PA7_BUTTON3").unwrap()))));
-        hw.insert("P1".to_string(), Box::new(Buzzer::new("P1".to_string(), Rc::clone(nets.get("PB0_BUZZER").unwrap()))));
+        hw.insert("P1".to_string(), Box::new(SinkPwm::new("P1".to_string(), "BUZZER".to_string(), Rc::clone(nets.get("PB0_BUZZER").unwrap()), PinState::Open)));
         hw.insert("U2".to_string(), Box::new(sr));
         hw.insert("DS1".to_string(), Box::new(disp));
-        hw.insert("R9".to_string(), Box::new(SinkPwm::new("DISP_EN".to_string(), Rc::clone(nets.get("PB1_DISP_EN").unwrap()), PinState::WeakPullUp)));
+        hw.insert("R9".to_string(), Box::new(SinkPwm::new("DISP_EN".to_string(), "PWM".to_string(), Rc::clone(nets.get("PB1_DISP_EN").unwrap()), PinState::WeakPullUp)));
         hw.insert("R1".to_string(), Box::new(Pot::new("R1".to_string(), Rc::clone(nets.get("PA2_POT").unwrap()), 0.5)));
         hw.insert("U5".to_string(), Box::new(SinkUART::new("U5".to_string(), Rc::clone(nets.get("PB2_UART_TX").unwrap()), Rc::clone(nets.get("PB3_UART_RX").unwrap()), "uart.txt".to_string())));
 
@@ -128,7 +127,7 @@ impl QUTy {
         };
 
         for net in &quty.nets {
-            net.1.borrow_mut().update();
+            net.1.borrow_mut().update(0);
         }
         for dev in &mut quty.hw {
             dev.1.update(0);
@@ -153,7 +152,7 @@ impl QUTy {
 
         let timestep = self.mcu.tick(self.time);
         for net in &self.nets {
-            net.1.borrow_mut().update();
+            net.1.borrow_mut().update(self.time);
         }
         for hw in &mut self.hw {
             hw.1.update(self.time);

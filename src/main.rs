@@ -15,9 +15,15 @@ mod events;
 use crate::boards::quty::QUTy;
 use crate::events::Event;
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref CLI: Cli = Cli::parse();
+}
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
-struct Cli {
+pub struct Cli {
     /// Microcontroller firmware to load in .HEX format
     firmware: String,
 
@@ -41,17 +47,24 @@ struct Cli {
     #[arg(short = 'o', long)]
     dump_stdout: bool,
 
+    /// Output all net state transitions
+    #[arg(short = 'n', long)]
+    net_all: bool,
+
+    /// Output net transitions from undefined state only
+    #[arg(short = 'u', long)]
+    net_undef: bool,
+
     /// Enable debug output
     #[arg(short, long)]
     debug: bool
+
+    
 }
 
 fn main() {
-    let cli = Cli::parse();
-
-    //let args: Vec<String> = env::args().collect();
     
-    let firmware = &cli.firmware;
+    let firmware = &CLI.firmware;
     {
         let file = File::open(Path::new(firmware)); 
         match file {
@@ -64,7 +77,7 @@ fn main() {
         // Drop file
     }
 
-    let events = match cli.events {
+    let events = match &CLI.events {
         Some(filename) => {
             let events = Event::from_file(&filename);
             println!("[EVENTS] {}: Parsed {} events.", &filename, events.len());
@@ -73,7 +86,7 @@ fn main() {
         None => Vec::new()
     };
 
-    let time_limit = match cli.timeout {
+    let time_limit = match CLI.timeout {
         Some(timeout) => {
             println!("[RUN] Time limit is {} ns.", timeout);
             timeout
@@ -88,7 +101,7 @@ fn main() {
     quty.events(events);
     quty.mcu_programme(firmware);
 
-    if cli.debug {
+    if CLI.debug {
         quty.core_debug();
     }
 
@@ -113,15 +126,15 @@ fn main() {
 
     println!("[INFO] Programme terminated after {} ns.", time);
 
-    if cli.dump_stack {
+    if CLI.dump_stack {
         quty.mcu_dumpstack();
     }
 
-    if cli.dump_regs {
+    if CLI.dump_regs {
         quty.core_dumpregs();
     }
 
-    if cli.dump_stdout {
+    if CLI.dump_stdout {
         quty.mcu_write_stdout();
     }
     

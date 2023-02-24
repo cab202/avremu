@@ -35,7 +35,9 @@ impl Pushbutton {
 
     pub fn press(&mut self, time: u64) {
         if !self.state.eq(&PushbuttonState::Pressed) {
-            println!("[@{:012X}] PB|{}: {}", time, self.name, "Pressed");
+            if time > 0 {
+                println!("[@{:012X}] PB|{}: {}", time, self.name, "Pressed");
+            }
         }
         
         self.state = PushbuttonState::Pressed;
@@ -48,7 +50,9 @@ impl Pushbutton {
 
     pub fn release(&mut self, time: u64) {
         if !self.state.eq(&PushbuttonState::Released) {
-            println!("[@{:012X}] PB|{}: {}", time, self.name, "Released");
+            if time > 0 {
+                println!("[@{:012X}] PB|{}: {}", time, self.name, "Released");
+            }
         }
         
         self.state = PushbuttonState::Released;
