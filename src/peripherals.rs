@@ -8,6 +8,7 @@ pub mod adc;
 pub mod usart;
 pub mod clkctrl;
 pub mod cpu;
+pub mod portmux;
 
 pub trait InterruptSource {
     fn interrupt(&mut self, _mask: u8) -> bool {

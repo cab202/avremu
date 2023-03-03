@@ -19,6 +19,7 @@ use crate::peripherals::tcb::Tcb;
 use crate::peripherals::tca::Tca;
 use crate::peripherals::adc::Adc;
 use crate::peripherals::usart::Usart;
+use crate::peripherals::portmux::Portmux;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -80,6 +81,8 @@ impl Device {
                 let vporta = Rc::new(RefCell::new(VirtualPort{port: Rc::clone(&porta)}));
                 let vportb = Rc::new(RefCell::new(VirtualPort{port: Rc::clone(&portb)}));
                 let vportc = Rc::new(RefCell::new(VirtualPort{port: Rc::clone(&portc)}));
+
+                let portmux = Rc::new(RefCell::new(Portmux::new("PORTMUX".to_string())));
                 
                 let ports = vec![
                     Rc::clone(&porta),
@@ -200,7 +203,7 @@ impl Device {
                 mm.add(0x0400, porta.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0400] PORTA (partial) 
                 mm.add(0x0420, portb.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0420] PORTB (partial) 
                 mm.add(0x0440, portc.clone() as Rc<RefCell<dyn MemoryMapped>>);      //[0x0440] PORTC (partial) 
-                //[0x05E0] PORTMUX 
+                mm.add(0x05E0, portmux.clone() as Rc<RefCell<dyn MemoryMapped>>);    //[0x05E0] PORTMUX 
                 mm.add(0x0600, adc0.clone() as Rc<RefCell<dyn MemoryMapped>>);       //[0x0600] ADC0 
                 mm.add(0x0680, Rc::clone(&ac0));                                //[0x0680] AC0 (not implemented) 
                 mm.add(0x0800, usart0.clone() as Rc<RefCell<dyn MemoryMapped>>);     //[0x0800] USART0 
@@ -220,7 +223,7 @@ impl Device {
                 mm.add(0x1400, Rc::clone(&eeprom));                             //[0x1400] EEPROM (erased, read only)
                 mm.add(0x1500, stdio.clone() as Rc<RefCell<dyn MemoryMapped>>);
                 //[0x1500-0x33FF] RESERVED
-                mm.add(0x3800, Rc::clone(&sram));                               //[0x3400] SRAM (RAMSTART = 0x3800 for 2K)
+                mm.add(0x3800, Rc::clone(&sram));                               //[0x3800] SRAM (RAMSTART = 0x3800 for 2K)
                 //[0x????-0x3FFF] RESERVED (up to 3K SRAM) 
                 //[0x4000-0x7FFF] RESERVED
                 mm.add(0x8000, Rc::clone(&flash));                              //[0x8000] FLASH
