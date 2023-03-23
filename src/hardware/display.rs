@@ -149,7 +149,7 @@ impl Display {
         let freq = 1e9/(period as f64);
         let duty = 100.0*(inton as f64)/(period as f64);
                 
-        format!("{} ({:.1} Hz, {:.1} %)", disp, freq, duty)
+        format!("{} ({:.0} Hz, {:.0} %)", disp, freq, duty)
     }
 
     fn decode_1d(&self) -> String {
@@ -186,7 +186,7 @@ impl Display {
         let freq = 1e9/(period as f64);
         let duty = 100.0*(inton as f64)/(period as f64);
                 
-        format!("{} ({:.1} Hz, {:.1} %)", disp, freq, duty)
+        format!("{} ({:.0} Hz, {:.0} %)", disp, freq, duty)
     }
 }
 
