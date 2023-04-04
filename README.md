@@ -1,6 +1,6 @@
 # avremu
 
-![build](https://github.com/cab202/avremu/actions/workflows/rust.yml/badge.svg)
+![Build](https://github.com/cab202/avremu/actions/workflows/rust.yml/badge.svg)
 
 Emulator for the ATtiny1626 microcontroller and [QUTy development board](https://cab202.github.io/quty/). Developed for support of learning and teaching in *CAB202 Microprocessors and Digital Systems*.
 
