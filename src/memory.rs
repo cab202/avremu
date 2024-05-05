@@ -110,12 +110,27 @@ impl MemoryMapped for Memory {
     }
 
     fn read(&mut self, address: usize) -> (u8, usize) {
-        (self.mem[address], self.lat)
+        if let Some(data) = self.mem.get(address) {
+            (*data, self.lat)
+        } else {
+            println!(
+                "[ERROR] Attempt to access undefined region of memory map: 0x{:04X}.",
+                address
+            );
+            (0, self.lat)
+        }
     }
 
     fn write(&mut self, address: usize, value: u8) -> usize {
         if !self.read_only {
-            self.mem[address] = value;
+            if let Some(ptr) = self.mem.get_mut(address) {
+                *ptr = value;
+            } else {
+                println!(
+                    "[ERROR] Attempt to access undefined region of memory map: 0x{:04X}.",
+                    address
+                );
+            }
         }
         0
     }

@@ -1241,7 +1241,12 @@ impl Core {
         }
 
         //Most instructions are single cycle so do this first
-        self.pc += 1;
+        // Terminate if PC overflows to prevent program from restarting
+        if let Some(result) = self.pc.checked_add(1) {
+            self.pc = result;
+        } else {
+            return false;
+        }
 
         match op {
             // Control
