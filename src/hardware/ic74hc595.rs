@@ -1,17 +1,16 @@
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use bitvec::prelude::*;
 
 use super::Hardware;
-use crate::nets::{PinState, Net, NetState};
+use crate::nets::{Net, NetState, PinState};
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum ClockState {
-    High, 
+    High,
     Low,
-    Undefined
+    Undefined,
 }
 
 #[allow(dead_code)]
@@ -33,13 +32,13 @@ pub struct IC74HC595 {
     reg_shift: u8,
     reg_latch: u8,
     state_shcp: ClockState,
-    state_stcp: ClockState
+    state_stcp: ClockState,
 }
 
 impl IC74HC595 {
     pub fn new(name: String) -> Self {
         IC74HC595 {
-            name, 
+            name,
             pins_out: [
                 Rc::new(RefCell::new(PinState::Open)),
                 Rc::new(RefCell::new(PinState::Open)),
@@ -48,7 +47,7 @@ impl IC74HC595 {
                 Rc::new(RefCell::new(PinState::Open)),
                 Rc::new(RefCell::new(PinState::Open)),
                 Rc::new(RefCell::new(PinState::Open)),
-                Rc::new(RefCell::new(PinState::Open))
+                Rc::new(RefCell::new(PinState::Open)),
             ],
             pin_q7s: Rc::new(RefCell::new(PinState::Open)),
             //pin_stcp: Rc::new(RefCell::new(PinState::Open)),
@@ -64,7 +63,7 @@ impl IC74HC595 {
                 Rc::new(RefCell::new(Net::new("".to_string()))),
                 Rc::new(RefCell::new(Net::new("".to_string()))),
                 Rc::new(RefCell::new(Net::new("".to_string()))),
-                Rc::new(RefCell::new(Net::new("".to_string())))
+                Rc::new(RefCell::new(Net::new("".to_string()))),
             ],
             net_stcp: Rc::new(RefCell::new(Net::new("".to_string()))),
             net_shcp: Rc::new(RefCell::new(Net::new("".to_string()))),
@@ -74,13 +73,15 @@ impl IC74HC595 {
             reg_shift: 0,
             reg_latch: 0,
             state_shcp: ClockState::Undefined,
-            state_stcp: ClockState::Undefined
+            state_stcp: ClockState::Undefined,
         }
     }
 
     pub fn connect_q(&mut self, n: usize, net: Rc<RefCell<Net>>) {
         self.nets_out[n] = net;
-        self.nets_out[n].borrow_mut().connect(Rc::downgrade(&self.pins_out[n]));
+        self.nets_out[n]
+            .borrow_mut()
+            .connect(Rc::downgrade(&self.pins_out[n]));
     }
 
     pub fn connect(&mut self, pin_name: &str, net: Rc<RefCell<Net>>) {
@@ -90,7 +91,7 @@ impl IC74HC595 {
             "ds" => self.net_ds = net,
             "mr_n" => self.net_mr_n = net,
             "oe_n" => self.net_oe_n = net,
-             _ => {}
+            _ => {}
         }
     }
 }
@@ -100,13 +101,13 @@ impl Hardware for IC74HC595 {
         let state_shcp_new = match self.net_shcp.borrow().state {
             NetState::High => ClockState::High,
             NetState::Low => ClockState::Low,
-            _ => ClockState::Undefined
+            _ => ClockState::Undefined,
         };
         //println!("SR: SHCP is {:?}", state_shcp_new);
         let state_stcp_new = match self.net_stcp.borrow().state {
             NetState::High => ClockState::High,
             NetState::Low => ClockState::Low,
-            _ => ClockState::Undefined
+            _ => ClockState::Undefined,
         };
         //println!("SR: STCP is {:?}", state_stcp_new);
         if self.net_mr_n.borrow().state.eq(&NetState::Low) {
@@ -134,10 +135,14 @@ impl Hardware for IC74HC595 {
                     PinState::DriveL
                 };
                 self.reg_shift <<= 1;
-                self.reg_shift |= if self.net_ds.borrow_mut().state.eq(&NetState::High) {1} else {0};
+                self.reg_shift |= if self.net_ds.borrow_mut().state.eq(&NetState::High) {
+                    1
+                } else {
+                    0
+                };
             }
         }
-        
+
         if self.net_oe_n.borrow().state.eq(&NetState::Low) {
             //println!("SR: Output enabled");
             for i in 0..8 {
@@ -155,7 +160,5 @@ impl Hardware for IC74HC595 {
 
         self.state_shcp = state_shcp_new;
         self.state_stcp = state_stcp_new;
-
     }
-        
 }

@@ -1,16 +1,14 @@
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use super::Hardware;
-use crate::nets::{PinState, Net, NetState};
+use crate::nets::{Net, NetState, PinState};
 
-
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum LedState {
-    On, 
+    On,
     Off,
-    Undefined
+    Undefined,
 }
 
 pub struct Led {
@@ -18,12 +16,12 @@ pub struct Led {
     pin: Rc<RefCell<PinState>>,
     net: Rc<RefCell<Net>>,
     state: LedState,
-    active_high: bool
+    active_high: bool,
 }
 
 impl Led {
     pub fn new(name: String, active_high: bool, net: Rc<RefCell<Net>>) -> Self {
-        let mut led = Led { 
+        let mut led = Led {
             name,
             pin: if active_high {
                 Rc::new(RefCell::new(PinState::WeakPullDown))
@@ -32,7 +30,7 @@ impl Led {
             },
             net,
             state: LedState::Undefined,
-            active_high
+            active_high,
         };
         led.net.borrow_mut().connect(Rc::downgrade(&led.pin));
         led.update(0);
@@ -44,16 +42,28 @@ impl Hardware for Led {
     fn update(&mut self, time: u64) {
         let new_state: LedState;
         match self.net.borrow().state {
-            NetState::High => if self.active_high {new_state = LedState::On} else {new_state = LedState::Off},
-            NetState::Low => if !self.active_high {new_state = LedState::On} else {new_state = LedState::Off},
-            _ => new_state = LedState::Undefined
+            NetState::High => {
+                if self.active_high {
+                    new_state = LedState::On
+                } else {
+                    new_state = LedState::Off
+                }
+            }
+            NetState::Low => {
+                if !self.active_high {
+                    new_state = LedState::On
+                } else {
+                    new_state = LedState::Off
+                }
+            }
+            _ => new_state = LedState::Undefined,
         }
         if !self.state.eq(&new_state) {
             if time > 0 {
                 println!("[@{:012X}] LED|{}: {:?}", time, self.name, new_state);
             }
             self.state = new_state;
-        } 
+        }
     }
 
     //fn get_pin(&self, _name: String) -> Weak<RefCell<PinState>> {

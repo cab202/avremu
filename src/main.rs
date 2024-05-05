@@ -3,14 +3,14 @@ use std::path::Path;
 
 use clap::Parser;
 
-mod devices;
-mod cores;
-mod memory;
-mod peripherals;
-mod nets;
-mod hardware;
 mod boards;
+mod cores;
+mod devices;
 mod events;
+mod hardware;
+mod memory;
+mod nets;
+mod peripherals;
 
 use crate::boards::quty::QUTy;
 use crate::events::Event;
@@ -57,21 +57,18 @@ pub struct Cli {
 
     /// Enable debug output
     #[arg(short, long)]
-    debug: bool
-
-    
+    debug: bool,
 }
 
 fn main() {
-    
     let firmware = &CLI.firmware;
     {
-        let file = File::open(Path::new(firmware)); 
+        let file = File::open(Path::new(firmware));
         match file {
             Ok(..) => println!("[FIRMWARE] {}.", firmware),
             Err(e) => {
                 println!("[FIRMWARE] Couldn't open {}. {}", firmware, e);
-                return
+                return;
             }
         }
         // Drop file
@@ -79,18 +76,18 @@ fn main() {
 
     let events = match &CLI.events {
         Some(filename) => {
-            let events = Event::from_file(&filename);
+            let events = Event::from_file(filename);
             println!("[EVENTS] {}: Parsed {} events.", &filename, events.len());
             events
-        },
-        None => Vec::new()
+        }
+        None => Vec::new(),
     };
 
     let time_limit = match CLI.timeout {
         Some(timeout) => {
             println!("[RUN] Time limit is {} ns.", timeout);
             timeout
-        },
+        }
         None => {
             println!("[RUN] No emulation time limit specified.");
             u64::MAX
@@ -121,7 +118,7 @@ fn main() {
         if time >= time_limit {
             println!("[END] Time limit elapsed.");
             break;
-         }
+        }
     }
 
     println!("[INFO] Programme terminated after {} ns.", time);
@@ -137,5 +134,4 @@ fn main() {
     if CLI.dump_stdout {
         quty.mcu_write_stdout();
     }
-    
 }

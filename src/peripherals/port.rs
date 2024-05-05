@@ -1,44 +1,44 @@
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use bitvec::view::BitView;
 
 use crate::hardware::Hardware;
-use crate::nets::{Net, NetState, PinState};
 use crate::memory::MemoryMapped;
+use crate::nets::{Net, NetState, PinState};
 
 use bitvec::prelude::*;
 
+const PORT_DIR: usize = 0x00;
+const PORT_DIRSET: usize = 0x01;
+const PORT_DIRCLR: usize = 0x02;
+const PORT_DIRTGL: usize = 0x03;
+const PORT_OUT: usize = 0x04;
+const PORT_OUTSET: usize = 0x05;
+const PORT_OUTCLR: usize = 0x06;
+const PORT_OUTTGL: usize = 0x07;
+const PORT_IN: usize = 0x08;
+const PORT_INTFLAGS: usize = 0x09;
+const PORT_PORTCTRL: usize = 0x0A;
 
-const PORT_DIR:     usize = 0x00;
-const PORT_DIRSET:  usize = 0x01;
-const PORT_DIRCLR:  usize = 0x02;
-const PORT_DIRTGL:  usize = 0x03;
-const PORT_OUT:     usize = 0x04;
-const PORT_OUTSET:  usize = 0x05;
-const PORT_OUTCLR:  usize = 0x06;
-const PORT_OUTTGL:  usize = 0x07;
-const PORT_IN:      usize = 0x08;
-const PORT_INTFLAGS:usize = 0x09;
-const PORT_PORTCTRL:usize = 0x0A;
-
-const PORT_PIN0CTRL:usize = 0x10;
+const PORT_PIN0CTRL: usize = 0x10;
 //const PORT_PIN1CTRL:usize = 0x11;
 //const PORT_PIN2CTRL:usize = 0x12;
 //const PORT_PIN3CTRL:usize = 0x13;
 //const PORT_PIN4CTRL:usize = 0x14;
 //const PORT_PIN5CTRL:usize = 0x15;
 //const PORT_PIN6CTRL:usize = 0x16;
-const PORT_PIN7CTRL:usize = 0x17;
+const PORT_PIN7CTRL: usize = 0x17;
 
+#[allow(clippy::upper_case_acronyms)]
 enum ISC {
     INTDISABLE,
     BOTHEDGES,
     RISING,
     FALLING,
     INPUTDISABLE,
-    LEVEL, 
-    RESERVED
+    LEVEL,
+    RESERVED,
 }
 
 impl ISC {
@@ -50,7 +50,7 @@ impl ISC {
             3 => ISC::FALLING,
             4 => ISC::INPUTDISABLE,
             5 => ISC::LEVEL,
-            _ => ISC::RESERVED
+            _ => ISC::RESERVED,
         }
     }
 }
@@ -59,35 +59,34 @@ struct PortIO {
     pin: Rc<RefCell<PinState>>,
     net: Rc<RefCell<Net>>,
     dir: bool,
-    out: bool, 
-    pullup_en: bool, 
+    out: bool,
+    pullup_en: bool,
     invert_en: bool,
     input_dis: bool,
     isc: ISC,
     po_out: bool,
     po_out_val: bool,
     po_dir: bool,
-    po_dir_val: bool
-    //interrupt sink
-    //analog sink
-    //pin state
+    po_dir_val: bool, //interrupt sink
+                      //analog sink
+                      //pin state
 }
 
 impl PortIO {
     fn new() -> Self {
-        PortIO { 
-            pin: Rc::new(RefCell::new(PinState::Open)), 
-            net: Rc::new(RefCell::new(Net::new("".to_string()))), 
-            dir: false, 
-            out: false, 
-            pullup_en: false, 
-            invert_en: false, 
-            input_dis: false, 
+        PortIO {
+            pin: Rc::new(RefCell::new(PinState::Open)),
+            net: Rc::new(RefCell::new(Net::new("".to_string()))),
+            dir: false,
+            out: false,
+            pullup_en: false,
+            invert_en: false,
+            input_dis: false,
             isc: ISC::INTDISABLE,
             po_out: false,
             po_out_val: false,
             po_dir: false,
-            po_dir_val: false 
+            po_dir_val: false,
         }
     }
 
@@ -125,7 +124,7 @@ impl PortIO {
 pub struct Port {
     name: String,
     pio: [PortIO; 8],
-    regs: [u8; 0x18]
+    regs: [u8; 0x18],
 }
 
 impl Port {
@@ -140,9 +139,9 @@ impl Port {
                 PortIO::new(),
                 PortIO::new(),
                 PortIO::new(),
-                PortIO::new()
+                PortIO::new(),
             ],
-            regs: [0u8; 0x18]
+            regs: [0u8; 0x18],
         }
     }
 
@@ -165,9 +164,9 @@ impl Port {
     }
 
     fn update_pinctrl(&mut self, n: usize) {
-        self.pio[n].invert_en = self.regs[PORT_PIN0CTRL+n] & (0x80) != 0;
-        self.pio[n].pullup_en = self.regs[PORT_PIN0CTRL+n] & (0x08) != 0;
-        self.pio[n].isc = ISC::from(self.regs[PORT_PIN0CTRL+n] & 0x07);
+        self.pio[n].invert_en = self.regs[PORT_PIN0CTRL + n] & (0x80) != 0;
+        self.pio[n].pullup_en = self.regs[PORT_PIN0CTRL + n] & (0x08) != 0;
+        self.pio[n].isc = ISC::from(self.regs[PORT_PIN0CTRL + n] & 0x07);
         if let ISC::INPUTDISABLE = self.pio[n].isc {
             self.pio[n].input_dis = true;
         }
@@ -176,24 +175,24 @@ impl Port {
 
     pub fn po_out(&mut self, pin_index: u8, state: bool) {
         self.pio[usize::from(pin_index)].po_out_val = state;
-        self.pio[usize::from(pin_index)].po_out = true; 
-        self.pio[usize::from(pin_index)].update_pinstate();  
+        self.pio[usize::from(pin_index)].po_out = true;
+        self.pio[usize::from(pin_index)].update_pinstate();
     }
 
     pub fn po_out_clear(&mut self, pin_index: u8) {
         self.pio[usize::from(pin_index)].po_out = false;
-        self.pio[usize::from(pin_index)].update_pinstate();   
+        self.pio[usize::from(pin_index)].update_pinstate();
     }
 
     pub fn po_dir(&mut self, pin_index: u8, state: bool) {
         self.pio[usize::from(pin_index)].po_dir_val = state;
-        self.pio[usize::from(pin_index)].po_dir = true; 
-        self.pio[usize::from(pin_index)].update_pinstate();  
+        self.pio[usize::from(pin_index)].po_dir = true;
+        self.pio[usize::from(pin_index)].update_pinstate();
     }
 
     pub fn po_dir_clear(&mut self, pin_index: u8) {
         self.pio[usize::from(pin_index)].po_dir = false;
-        self.pio[usize::from(pin_index)].update_pinstate();   
+        self.pio[usize::from(pin_index)].update_pinstate();
     }
 
     pub fn get_pinstate(&self, pin_index: u8) -> bool {
@@ -207,7 +206,7 @@ impl Port {
 
 impl MemoryMapped for Port {
     fn get_size(&self) -> usize {
-        0x18    
+        0x18
     }
 
     fn read(&mut self, address: usize) -> (u8, usize) {
@@ -218,24 +217,51 @@ impl MemoryMapped for Port {
             PORT_INTFLAGS => (self.regs[PORT_INTFLAGS], 0),
             PORT_PORTCTRL => (self.regs[PORT_PORTCTRL] & 0x01, 0),
             PORT_PIN0CTRL..=PORT_PIN7CTRL => (self.regs[address] & 0x8F, 0),
-            _ => panic!("Attempt to access invalid register in PORT peripheral.")
+            _ => panic!("Attempt to access invalid register in PORT peripheral."),
         }
     }
 
     fn write(&mut self, address: usize, value: u8) -> usize {
         match address {
-            PORT_DIR => {self.regs[PORT_DIR] = value; self.update_dir()},
-            PORT_DIRSET => {self.regs[PORT_DIR] |= value; self.update_dir()},
-            PORT_DIRCLR => {self.regs[PORT_DIR] &= !value; self.update_dir()},
-            PORT_DIRTGL => {self.regs[PORT_DIR] ^= value; self.update_dir()},
-            PORT_OUT => {self.regs[PORT_OUT] = value; self.update_out()},
-            PORT_OUTSET => {self.regs[PORT_OUT] |= value; self.update_out()},
-            PORT_OUTCLR => {self.regs[PORT_OUT] &= !value; self.update_out()},
-            PORT_OUTTGL | PORT_IN => {self.regs[PORT_OUT] ^= value; self.update_out()},
-            PORT_INTFLAGS => {self.regs[PORT_INTFLAGS] &= !value},
-            PORT_PORTCTRL => {self.regs[PORT_PORTCTRL] = value & 0x01},
-            PORT_PIN0CTRL..=PORT_PIN7CTRL => {self.regs[address] = value & 0x8F; self.update_pinctrl(address-PORT_PIN0CTRL)},  
-            _ => panic!("Attenmt to access invalid register in PORT peripheral.")
+            PORT_DIR => {
+                self.regs[PORT_DIR] = value;
+                self.update_dir()
+            }
+            PORT_DIRSET => {
+                self.regs[PORT_DIR] |= value;
+                self.update_dir()
+            }
+            PORT_DIRCLR => {
+                self.regs[PORT_DIR] &= !value;
+                self.update_dir()
+            }
+            PORT_DIRTGL => {
+                self.regs[PORT_DIR] ^= value;
+                self.update_dir()
+            }
+            PORT_OUT => {
+                self.regs[PORT_OUT] = value;
+                self.update_out()
+            }
+            PORT_OUTSET => {
+                self.regs[PORT_OUT] |= value;
+                self.update_out()
+            }
+            PORT_OUTCLR => {
+                self.regs[PORT_OUT] &= !value;
+                self.update_out()
+            }
+            PORT_OUTTGL | PORT_IN => {
+                self.regs[PORT_OUT] ^= value;
+                self.update_out()
+            }
+            PORT_INTFLAGS => self.regs[PORT_INTFLAGS] &= !value,
+            PORT_PORTCTRL => self.regs[PORT_PORTCTRL] = value & 0x01,
+            PORT_PIN0CTRL..=PORT_PIN7CTRL => {
+                self.regs[address] = value & 0x8F;
+                self.update_pinctrl(address - PORT_PIN0CTRL)
+            }
+            _ => panic!("Attenmt to access invalid register in PORT peripheral."),
         }
         0
     }
@@ -254,7 +280,7 @@ impl Hardware for Port {
 }
 
 pub struct VirtualPort {
-    pub port: Rc<RefCell<Port>>
+    pub port: Rc<RefCell<Port>>,
 }
 
 impl MemoryMapped for VirtualPort {
@@ -263,15 +289,13 @@ impl MemoryMapped for VirtualPort {
     }
 
     fn read(&mut self, address: usize) -> (u8, usize) {
-        self.port.borrow_mut().read(
-            match address {
-                0x00 => 0x00,
-                0x01 => 0x04,
-                0x02 => 0x08,
-                0x03 => 0x09,
-                _ => 0x0B
-            }
-        )    
+        self.port.borrow_mut().read(match address {
+            0x00 => 0x00,
+            0x01 => 0x04,
+            0x02 => 0x08,
+            0x03 => 0x09,
+            _ => 0x0B,
+        })
     }
 
     fn write(&mut self, address: usize, value: u8) -> usize {
@@ -281,10 +305,9 @@ impl MemoryMapped for VirtualPort {
                 0x01 => 0x04,
                 0x02 => 0x08,
                 0x03 => 0x09,
-                _ => 0x0B
-            }, 
-            value
-        ) 
+                _ => 0x0B,
+            },
+            value,
+        )
     }
 }
-

@@ -1,23 +1,23 @@
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
-use std::cell::RefCell;
 
-use crate::peripherals::port::Port;
-use crate::memory::MemoryMapped;
 use super::{Clocked, InterruptSource};
+use crate::memory::MemoryMapped;
+use crate::peripherals::port::Port;
 
 use bitvec::prelude::*;
 
-const SPI_CTRLA:    usize = 0x00;
-const SPI_CTRLB:    usize = 0x01;
-const SPI_INTCTRL:  usize = 0x02;
+const SPI_CTRLA: usize = 0x00;
+const SPI_CTRLB: usize = 0x01;
+const SPI_INTCTRL: usize = 0x02;
 const SPI_INTFLAGS: usize = 0x03;
-const SPI_DATA:     usize = 0x04;
+const SPI_DATA: usize = 0x04;
 
 const SPI_PIN_MOSI: usize = 0;
 const SPI_PIN_MISO: usize = 1;
-const SPI_PIN_SCK:  usize = 2;
-const SPI_PIN_SS:   usize = 3;
+const SPI_PIN_SCK: usize = 2;
+const SPI_PIN_SS: usize = 3;
 
 #[allow(dead_code)]
 pub struct Spi {
@@ -36,13 +36,19 @@ pub struct Spi {
     pins_alt: [u8; 4],
     pub mux_alt: bool,
     ps_count: u8,
-    subinterval: u8, 
+    subinterval: u8,
     state_sck: bool,
-    intflags_set: u8
+    intflags_set: u8,
 }
 
 impl Spi {
-    pub fn new(name: String, port: Rc<RefCell<Port>>, pins: [u8; 4], port_alt: Rc<RefCell<Port>>, pins_alt: [u8; 4]) -> Self {
+    pub fn new(
+        name: String,
+        port: Rc<RefCell<Port>>,
+        pins: [u8; 4],
+        port_alt: Rc<RefCell<Port>>,
+        pins_alt: [u8; 4],
+    ) -> Self {
         Spi {
             name,
             regs: [0u8; 0x05],
@@ -50,18 +56,18 @@ impl Spi {
             data_tx: 0,
             buf_rx: VecDeque::new(),
             has_data_tx: false,
-            sr_tx: 0, 
+            sr_tx: 0,
             sr_rx: 0,
             sr_state: 0,
             port,
-            pins, 
+            pins,
             port_alt,
             pins_alt,
             mux_alt: false,
             ps_count: 0,
             subinterval: 0,
             state_sck: false,
-            intflags_set: 0
+            intflags_set: 0,
         }
     }
 
@@ -69,13 +75,13 @@ impl Spi {
         // TODO: Handle flag clear process
         self.regs[SPI_INTFLAGS]
     }
-    
+
     fn handle_write_intflags(&mut self, value: u8) {
-         // NOTE: This is undefined behviour; anecdotally validated only
-         // TODO: Confirm experimentally
-         self.regs[SPI_INTFLAGS] &= (!value) | 0x20; // Write to clear any bit except DREIF
-         //println!("[SPI] Wrote INTFLAGS = {:02X}, now {:02X}", value, self.regs[SPI_INTFLAGS]);
-    }  
+        // NOTE: This is undefined behviour; anecdotally validated only
+        // TODO: Confirm experimentally
+        self.regs[SPI_INTFLAGS] &= (!value) | 0x20; // Write to clear any bit except DREIF
+                                                    //println!("[SPI] Wrote INTFLAGS = {:02X}, now {:02X}", value, self.regs[SPI_INTFLAGS]);
+    }
 
     fn handle_read_data(&mut self) -> u8 {
         // Only master mode implemented
@@ -85,7 +91,9 @@ impl Spi {
                 self.data_rx = self.buf_rx.pop_front().unwrap();
             }
             if self.buf_rx.is_empty() {
-                self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(7, false);
+                self.regs[SPI_INTFLAGS]
+                    .view_bits_mut::<Lsb0>()
+                    .set(7, false);
             }
             self.data_rx
         } else {
@@ -112,11 +120,13 @@ impl Spi {
                 // Transmitting
                 self.data_tx = value;
                 self.has_data_tx = true;
-                self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(5, false);
+                self.regs[SPI_INTFLAGS]
+                    .view_bits_mut::<Lsb0>()
+                    .set(5, false);
             }
         } else {
             // Unbuffered
-            
+
             // Clear INTFLAGS if interrupt has been serviced
             self.regs[SPI_INTFLAGS] &= !self.intflags_set;
             self.intflags_set = 0x00;
@@ -130,15 +140,15 @@ impl Spi {
     }
 
     fn is_master(&self) -> bool {
-        self.regs[SPI_CTRLA].view_bits::<Lsb0>()[5] 
+        self.regs[SPI_CTRLA].view_bits::<Lsb0>()[5]
     }
 
     fn is_enabled(&self) -> bool {
-        self.regs[SPI_CTRLA].view_bits::<Lsb0>()[0] 
+        self.regs[SPI_CTRLA].view_bits::<Lsb0>()[0]
     }
 
     fn is_lsb_first(&self) -> bool {
-        self.regs[SPI_CTRLA].view_bits::<Lsb0>()[6] 
+        self.regs[SPI_CTRLA].view_bits::<Lsb0>()[6]
     }
 
     fn prescaler(&self) -> u8 {
@@ -147,7 +157,7 @@ impl Spi {
             0x01 => 16,
             0x02 => 64,
             0x03 => 128,
-            _ => 4
+            _ => 4,
         };
 
         if self.regs[SPI_CTRLA].view_bits::<Lsb0>()[4] {
@@ -163,31 +173,30 @@ impl Spi {
 
     #[allow(dead_code)]
     fn is_ssd(&self) -> bool {
-        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[2] 
+        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[2]
     }
 
     fn is_bufen(&self) -> bool {
-        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[7] 
+        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[7]
     }
 
     #[allow(dead_code)]
     fn is_bufwr(&self) -> bool {
-        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[6] 
-    } 
-    
+        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[6]
+    }
 }
 
 impl MemoryMapped for Spi {
     fn get_size(&self) -> usize {
-        self.regs.len() 
+        self.regs.len()
     }
 
     fn read(&mut self, address: usize) -> (u8, usize) {
         match address {
             SPI_CTRLA..=SPI_INTCTRL => (self.regs[address], 0),
-            SPI_INTFLAGS => {(self.handle_read_intflags(),0)},
-            SPI_DATA => {(self.handle_read_data(),0)},
-            _ => panic!("Attempt to access invalid register in SPI peripheral.")
+            SPI_INTFLAGS => (self.handle_read_intflags(), 0),
+            SPI_DATA => (self.handle_read_data(), 0),
+            _ => panic!("Attempt to access invalid register in SPI peripheral."),
         }
     }
 
@@ -195,8 +204,8 @@ impl MemoryMapped for Spi {
         match address {
             SPI_CTRLA..=SPI_INTCTRL => self.regs[address] = value,
             SPI_INTFLAGS => self.handle_write_intflags(value),
-            SPI_DATA => {self.handle_write_data(value)},
-            _ => panic!("Attempt to access invalid register in SPI peripheral.")
+            SPI_DATA => self.handle_write_data(value),
+            _ => panic!("Attempt to access invalid register in SPI peripheral."),
         }
         0
     }
@@ -208,14 +217,15 @@ impl InterruptSource for Spi {
             (self.regs[SPI_INTCTRL] & self.regs[SPI_INTFLAGS] & mask) != 0x00
         } else {
             //LSB is IE in non-buffered mode
-            if ((self.regs[SPI_INTCTRL] & 0x01) != 0x00) & ((self.regs[SPI_INTFLAGS] & 0xC0) != 0x00) {
+            if ((self.regs[SPI_INTCTRL] & 0x01) != 0x00)
+                & ((self.regs[SPI_INTFLAGS] & 0xC0) != 0x00)
+            {
                 self.intflags_set = self.regs[SPI_INTFLAGS] & 0xC0; // register which flags were set when read
-                //println!("[SPI] Interrupt {:02X}", self.regs[SPI_INTFLAGS]);
+                                                                    //println!("[SPI] Interrupt {:02X}", self.regs[SPI_INTFLAGS]);
                 true
             } else {
                 false
             }
-        
         }
     }
 }
@@ -238,7 +248,7 @@ impl Clocked for Spi {
                 port = self.port.borrow_mut();
                 pins = self.pins;
             }
-            
+
             // TICK!
             if self.is_enabled() {
                 if self.is_master() {
@@ -246,9 +256,15 @@ impl Clocked for Spi {
                     if (self.sr_state == 0) & (self.subinterval == 0) {
                         // Idle
                         match self.mode() {
-                            0..=1 => {self.state_sck = false; port.po_out(pins[SPI_PIN_SCK], false)}, // Clock idles low
-                            2..=3 => {self.state_sck = true; port.po_out(pins[SPI_PIN_SCK], true)}, // Clock idles high
-                            _ => panic!("Invalid SPI mode specified.")
+                            0..=1 => {
+                                self.state_sck = false;
+                                port.po_out(pins[SPI_PIN_SCK], false)
+                            } // Clock idles low
+                            2..=3 => {
+                                self.state_sck = true;
+                                port.po_out(pins[SPI_PIN_SCK], true)
+                            } // Clock idles high
+                            _ => panic!("Invalid SPI mode specified."),
                         }
                     } else {
                         // New transfer
@@ -270,7 +286,9 @@ impl Clocked for Spi {
                                     port.po_out(pins[SPI_PIN_MOSI], mosi);
                                     self.sr_tx >>= 1;
                                     self.sr_rx >>= 1;
-                                    self.sr_tx.view_bits_mut::<Lsb0>().set(7, port.get_pinstate(pins[SPI_PIN_MISO]));
+                                    self.sr_tx
+                                        .view_bits_mut::<Lsb0>()
+                                        .set(7, port.get_pinstate(pins[SPI_PIN_MISO]));
                                     self.sr_state -= 1;
                                 }
                                 if self.subinterval == 1 {
@@ -284,10 +302,14 @@ impl Clocked for Spi {
                                         if self.buf_rx.len() > 2 {
                                             // Discard oldest data
                                             self.buf_rx.pop_front();
-                                            self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(0, true); // buffer overflow
+                                            self.regs[SPI_INTFLAGS]
+                                                .view_bits_mut::<Lsb0>()
+                                                .set(0, true); // buffer overflow
                                         }
-                                        self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(7, true); // recieve complete
-                                        // Buffered, check for data in buffer
+                                        self.regs[SPI_INTFLAGS]
+                                            .view_bits_mut::<Lsb0>()
+                                            .set(7, true); // recieve complete
+                                                           // Buffered, check for data in buffer
                                         if self.has_data_tx {
                                             self.sr_tx = self.data_tx;
                                             if !self.is_lsb_first() {
@@ -297,34 +319,32 @@ impl Clocked for Spi {
                                             // Commence new transfer
                                             self.subinterval = 16;
                                             self.sr_state = 8;
-                                            self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(5, true); // data reg empty
+                                            self.regs[SPI_INTFLAGS]
+                                                .view_bits_mut::<Lsb0>()
+                                                .set(5, true); // data reg empty
                                         } else {
                                             self.subinterval = 0;
-                                            self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(6, true); // transfer complete
+                                            self.regs[SPI_INTFLAGS]
+                                                .view_bits_mut::<Lsb0>()
+                                                .set(6, true); // transfer complete
                                         }
                                     } else {
                                         self.subinterval = 0;
                                         self.data_rx = self.sr_rx;
-                                        self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(7, true); // transfer complete
-                                    }     
+                                        self.regs[SPI_INTFLAGS]
+                                            .view_bits_mut::<Lsb0>()
+                                            .set(7, true); // transfer complete
+                                    }
                                 } else {
                                     self.subinterval -= 1;
                                 }
-                            },
-                            1 => {
-
-                            },
-                            2 => {
-
-                            },
-                            3 => {
-
-                            },
-                            _ => panic!("Invalid SPI mode.")
+                            }
+                            1 => {}
+                            2 => {}
+                            3 => {}
+                            _ => panic!("Invalid SPI mode."),
                         }
                     }
-
-
                 } else {
                     // Client mode
                     //
@@ -334,19 +354,15 @@ impl Clocked for Spi {
                     port.po_dir(pins[SPI_PIN_SS], false);
                     port.po_out(pins[SPI_PIN_MISO], false);
                 }
-
             } else {
-                // We are not enabled, so lets make sure any port overrides are relinquished 
-                for i in 0..4 {
-                    port.po_out_clear(pins[i]);
-                    port.po_dir_clear(pins[i]); 
+                // We are not enabled, so lets make sure any port overrides are relinquished
+                for pin in pins {
+                    port.po_out_clear(pin);
+                    port.po_dir_clear(pin);
                 }
             }
-
-            
         } else {
             self.ps_count -= 1;
         }
     }
-    
 }

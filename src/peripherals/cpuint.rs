@@ -1,21 +1,21 @@
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::cores::InterruptHandler;
 use crate::memory::MemoryMapped;
 use crate::peripherals::InterruptSource;
 
-const _CPUINT_CTRLA:    usize = 0x00;
-const CPUINT_STATUS:   usize = 0x01;
-const _CPUINT_LVL0PRI:  usize = 0x02;
-const _CPUINT_LVL1VEC:  usize = 0x03;
+const _CPUINT_CTRLA: usize = 0x00;
+const CPUINT_STATUS: usize = 0x01;
+const _CPUINT_LVL0PRI: usize = 0x02;
+const _CPUINT_LVL1VEC: usize = 0x03;
 
 #[allow(dead_code)]
 pub struct Cpuint {
     regs: [u8; 4],
     ccp: bool,
     sources: Vec<(usize, Rc<RefCell<dyn InterruptSource>>, u8)>,
-    vectors: Vec<u16>
+    vectors: Vec<u16>,
 }
 
 impl Cpuint {
@@ -28,11 +28,16 @@ impl Cpuint {
             regs: [0; 4],
             ccp: false,
             sources: Vec::new(),
-            vectors: table
+            vectors: table,
         }
     }
 
-    pub fn add_source(&mut self, vector_index: usize, peripheral: Rc<RefCell<dyn InterruptSource>>, flag_mask: u8) {
+    pub fn add_source(
+        &mut self,
+        vector_index: usize,
+        peripheral: Rc<RefCell<dyn InterruptSource>>,
+        flag_mask: u8,
+    ) {
         self.sources.push((vector_index, peripheral, flag_mask));
     }
 
@@ -45,7 +50,6 @@ impl Cpuint {
     pub fn ccp_disable(&mut self) {
         self.ccp = false;
     }
-
 }
 
 impl MemoryMapped for Cpuint {
@@ -71,18 +75,18 @@ impl InterruptHandler for Cpuint {
             for i in 0..self.sources.len() {
                 if self.sources[i].1.borrow_mut().interrupt(self.sources[i].2) {
                     // Set LVL0EX flag
-                    self.regs[CPUINT_STATUS] |= 0x01;   
+                    self.regs[CPUINT_STATUS] |= 0x01;
                     //TODO: Handle NMI and priorities correctly
                     return Option::Some(self.vectors[self.sources[i].0]);
                 }
             }
-        } 
+        }
         Option::None
     }
 
     fn reti(&mut self) {
         // Clear LVL0EX flag
         // TODO: Handle interrupt priorities correctly
-        self.regs[CPUINT_STATUS] &= !0x01;   
+        self.regs[CPUINT_STATUS] &= !0x01;
     }
 }

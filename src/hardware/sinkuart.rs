@@ -1,26 +1,24 @@
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::fs;
+use std::rc::Rc;
 
 use bitvec::prelude::*;
 
 use super::Hardware;
-use crate::nets::{PinState, Net, NetState};
+use crate::nets::{Net, NetState, PinState};
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum RxState {
-    High, 
+    High,
     Low,
-    Undefined
+    Undefined,
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum UartState {
     Idle,
     Shift,
-    Check
+    Check,
 }
 
 pub struct SinkUART {
@@ -37,14 +35,14 @@ pub struct SinkUART {
     rx_time: u64,
     tx_time: u64,
     ns_per_bit: u64,
-    out: String, 
-    outfile: String
+    out: String,
+    outfile: String,
 }
 
 impl SinkUART {
     pub fn new(name: String, rx: Rc<RefCell<Net>>, tx: Rc<RefCell<Net>>, filename: String) -> Self {
         let su = SinkUART {
-            name, 
+            name,
             pin_tx: Rc::new(RefCell::new(PinState::DriveH)),
             net_rx: rx,
             rx_pinstate: RxState::Undefined,
@@ -58,7 +56,7 @@ impl SinkUART {
             tx_time: 0,
             ns_per_bit: 104167,
             out: "".to_string(),
-            outfile: filename
+            outfile: filename,
         };
         tx.borrow_mut().connect(Rc::downgrade(&su.pin_tx));
         su
@@ -70,13 +68,14 @@ impl SinkUART {
     }
 
     pub fn out_close(&self) {
-        fs::write(&self.outfile, &self.out).expect(&format!("Unable to write uart out to {}.", self.outfile));
+        fs::write(&self.outfile, &self.out)
+            .unwrap_or_else(|_| panic!("Unable to write uart out to {}.", self.outfile));
     }
 
     fn tx(&mut self, time: u64, byte: u8) {
         if self.tx_state.eq(&UartState::Idle) {
             let mut b = byte as u16;
-            b |= 0x0100;    // stop bit
+            b |= 0x0100; // stop bit
             self.tx_reg = b;
             self.tx_bit = 9; //start + 8N1
             self.tx_state = UartState::Shift;
@@ -91,7 +90,7 @@ impl Hardware for SinkUART {
         let rx_pinstate_new = match self.net_rx.borrow().state {
             NetState::High => RxState::High,
             NetState::Low => RxState::Low,
-            _ => RxState::Undefined
+            _ => RxState::Undefined,
         };
 
         match self.rx_state {
@@ -100,9 +99,9 @@ impl Hardware for SinkUART {
                     //println!("[VCP] Start bit detected.");
                     self.rx_state = UartState::Shift;
                     self.rx_bit = 9; // 8N1
-                    self.rx_time = time+(self.ns_per_bit*3/2);
+                    self.rx_time = time + (self.ns_per_bit * 3 / 2);
                 }
-            },
+            }
             UartState::Shift => {
                 if time >= self.rx_time {
                     self.rx_time += self.ns_per_bit;
@@ -120,7 +119,7 @@ impl Hardware for SinkUART {
                         self.rx_reg <<= 1;
                     }
                 }
-            },
+            }
             UartState::Check => {
                 if self.rx_reg & 1 == 1 {
                     // Stop bit is high, frame OK
@@ -134,7 +133,7 @@ impl Hardware for SinkUART {
         };
 
         match self.tx_state {
-            UartState::Idle => {},
+            UartState::Idle => {}
             UartState::Shift => {
                 if time >= self.tx_time {
                     self.tx_time += self.ns_per_bit;
@@ -151,24 +150,22 @@ impl Hardware for SinkUART {
                         self.tx_state = UartState::Idle;
                     }
                 }
-            },
-            _ => self.tx_state = UartState::Idle
+            }
+            _ => self.tx_state = UartState::Idle,
         };
 
         self.rx_pinstate = rx_pinstate_new;
-
     }
 
-    fn event(&mut self, time: u64, event: &String) {
+    fn event(&mut self, time: u64, event: &str) {
         if event.eq_ignore_ascii_case("flush") {
             self.out_close();
         } else {
-            let byte = u8::from_str_radix(event.as_str(), 16).unwrap();
+            let byte = u8::from_str_radix(event, 16).unwrap();
             self.tx(time, byte);
             if time > 0 {
                 println!("[@{:012X}] UART|{}: Tx 0x{:02X}", time, self.name, byte);
             }
-        } 
+        }
     }
-        
 }
