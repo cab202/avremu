@@ -162,6 +162,19 @@ impl QUTy {
         // Update the time at the end (once we know what the micro step was)
         self.time += timestep;
 
+        // Force UART flush if program terminates before event is called
+        if timestep == 0
+            && self
+                .events
+                .iter()
+                .any(|e| e.device == "U5" && e.event == "flush")
+        {
+            self.hw
+                .get_mut("U5")
+                .unwrap()
+                .event(self.time, &"flush".to_string());
+        }
+
         timestep
     }
 
