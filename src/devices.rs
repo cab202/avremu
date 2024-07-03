@@ -387,12 +387,12 @@ impl Device {
 
     pub fn dump_regs(&self) {
         for i in 0..=31 {
-            println!("[R{:02}] 0x{:02X}", i, self.core.get_r(i));
+            println!("[R{:02}] 0x{:02X}", i, self.core.get_register(i));
         }
     }
 
     pub fn dump_stack(&self) {
-        let mut sp = self.core.get_sp();
+        let mut sp = self.core.get_stack_pointer();
         while sp < self.RAMEND {
             sp += 1;
             println!(
