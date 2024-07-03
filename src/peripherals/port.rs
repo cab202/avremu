@@ -9,6 +9,8 @@ use crate::nets::{Net, NetState, PinState};
 
 use bitvec::prelude::*;
 
+use super::InterruptSource;
+
 const PORT_DIR: usize = 0x00;
 const PORT_DIRSET: usize = 0x01;
 const PORT_DIRCLR: usize = 0x02;
@@ -22,12 +24,6 @@ const PORT_INTFLAGS: usize = 0x09;
 const PORT_PORTCTRL: usize = 0x0A;
 
 const PORT_PIN0CTRL: usize = 0x10;
-//const PORT_PIN1CTRL:usize = 0x11;
-//const PORT_PIN2CTRL:usize = 0x12;
-//const PORT_PIN3CTRL:usize = 0x13;
-//const PORT_PIN4CTRL:usize = 0x14;
-//const PORT_PIN5CTRL:usize = 0x15;
-//const PORT_PIN6CTRL:usize = 0x16;
 const PORT_PIN7CTRL: usize = 0x17;
 
 #[allow(clippy::upper_case_acronyms)]
@@ -261,7 +257,7 @@ impl MemoryMapped for Port {
                 self.regs[address] = value & 0x8F;
                 self.update_pinctrl(address - PORT_PIN0CTRL)
             }
-            _ => panic!("Attenmt to access invalid register in PORT peripheral."),
+            _ => panic!("Attempt to access invalid register in PORT peripheral."),
         }
         0
     }
@@ -271,8 +267,24 @@ impl Hardware for Port {
     fn update(&mut self, _time: u64) {
         for i in 0..8 {
             match self.pio[i].net.borrow().state {
-                NetState::High => self.regs[PORT_IN] |= 1u8 << i,
-                NetState::Low => self.regs[PORT_IN] &= !(1u8 << i),
+                NetState::High => {
+                    if (self.regs[PORT_IN] & (1u8 << i)) == 0x00 {
+                        match self.pio[i].isc {
+                            ISC::RISING | ISC::BOTHEDGES => self.regs[PORT_INTFLAGS] |= 1u8 << i,
+                            _ => {}
+                        }
+                    }
+                    self.regs[PORT_IN] |= 1u8 << i
+                }
+                NetState::Low => {
+                    if (self.regs[PORT_IN] & (1u8 << i)) != 0x00 {
+                        match self.pio[i].isc {
+                            ISC::FALLING | ISC::BOTHEDGES => self.regs[PORT_INTFLAGS] |= 1u8 << i,
+                            _ => {}
+                        }
+                    }
+                    self.regs[PORT_IN] &= !(1u8 << i)
+                }
                 _ => {} //do nothing if undefined
             }
         }
@@ -309,5 +321,18 @@ impl MemoryMapped for VirtualPort {
             },
             value,
         )
+    }
+}
+
+impl InterruptSource for Port {
+    fn interrupt(&mut self, mask: u8) -> bool {
+        (((self.regs[PORT_PIN0CTRL] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b00000001 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 1] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b00000010 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 2] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b00000100 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 3] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b00001000 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 4] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b00010000 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 5] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b00100000 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 6] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b01000000 & mask) != 0x00) || // fmt
+        (((self.regs[PORT_PIN0CTRL + 7] & 0x03) != 0x00) && (self.regs[PORT_INTFLAGS] & 0b10000000 & mask) != 0x00)
     }
 }
