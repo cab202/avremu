@@ -211,7 +211,7 @@ impl MemoryMapped for Adc {
                     _ => ADC_REFSEL::RESERVED,
                 };
                 if (value >> 3) < 4 {
-                    //TODO: Fix hardcoding for 3.3 MHz
+                    // TODO: Fix hardcoding for 3.3 MHz
                     println!(
                         "[WARNING] Inappropriate TIMEBASE value specified for ADC: {}.",
                         value >> 3
@@ -350,7 +350,7 @@ impl Clocked for Adc {
                 if self.delay == 0 {
                     // Conversion complete
                     self.busy = false;
-                    //println!("[ADC0] Conversion complete: 0x{:06X}", self.sample);
+
                     match self.mode {
                         ADC_MODE::SINGLE_8BIT => {
                             self.regs[ADC_RESULT0] = (self.sample >> 4) as u8;
@@ -379,7 +379,7 @@ impl Clocked for Adc {
                         // Free running
                         self.sample();
                     } else {
-                        self.regs[ADC_COMMAND] &= 0xF8; //STOP
+                        self.regs[ADC_COMMAND] &= 0xF8; // STOP
                     }
                 } else {
                     self.delay -= 1;

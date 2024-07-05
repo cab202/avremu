@@ -80,7 +80,6 @@ impl Spi {
         // NOTE: This is undefined behviour; anecdotally validated only
         // TODO: Confirm experimentally
         self.regs[SPI_INTFLAGS] &= (!value) | 0x20; // Write to clear any bit except DREIF
-                                                    //println!("[SPI] Wrote INTFLAGS = {:02X}, now {:02X}", value, self.regs[SPI_INTFLAGS]);
     }
 
     fn handle_read_data(&mut self) -> u8 {
@@ -132,7 +131,7 @@ impl Spi {
             self.intflags_set = 0x00;
 
             if self.sr_state > 0 {
-                self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(6, true); //WRCOL
+                self.regs[SPI_INTFLAGS].view_bits_mut::<Lsb0>().set(6, true); // WRCOL
             }
             self.sr_tx = value;
             self.sr_state = 8;
@@ -169,11 +168,6 @@ impl Spi {
 
     fn mode(&self) -> u8 {
         self.regs[SPI_CTRLB] & 0x03
-    }
-
-    #[allow(dead_code)]
-    fn is_ssd(&self) -> bool {
-        self.regs[SPI_CTRLB].view_bits::<Lsb0>()[2]
     }
 
     fn is_bufen(&self) -> bool {
@@ -216,12 +210,11 @@ impl InterruptSource for Spi {
         if self.is_bufen() {
             (self.regs[SPI_INTCTRL] & self.regs[SPI_INTFLAGS] & mask) != 0x00
         } else {
-            //LSB is IE in non-buffered mode
+            // LSB is IE in non-buffered mode
             if ((self.regs[SPI_INTCTRL] & 0x01) != 0x00)
                 & ((self.regs[SPI_INTFLAGS] & 0xC0) != 0x00)
             {
                 self.intflags_set = self.regs[SPI_INTFLAGS] & 0xC0; // register which flags were set when read
-                                                                    //println!("[SPI] Interrupt {:02X}", self.regs[SPI_INTFLAGS]);
                 true
             } else {
                 false
@@ -232,7 +225,6 @@ impl InterruptSource for Spi {
 
 impl Clocked for Spi {
     fn tick(&mut self, _time: u64) {
-        //println!("{} {} {} {}", self.is_enabled(), self.mode(), self.prescaler(), self.is_master());
         // Prescaler
         if self.ps_count == 0 {
             // Reset counter

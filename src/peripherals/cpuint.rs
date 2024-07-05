@@ -11,6 +11,7 @@ const _CPUINT_LVL0PRI: usize = 0x02;
 const _CPUINT_LVL1VEC: usize = 0x03;
 
 #[allow(dead_code)]
+#[allow(clippy::type_complexity)]
 pub struct Cpuint {
     regs: [u8; 4],
     ccp: bool,
@@ -40,16 +41,6 @@ impl Cpuint {
     ) {
         self.sources.push((vector_index, peripheral, flag_mask));
     }
-
-    #[allow(dead_code)]
-    pub fn ccp_enable(&mut self) {
-        self.ccp = true;
-    }
-
-    #[allow(dead_code)]
-    pub fn ccp_disable(&mut self) {
-        self.ccp = false;
-    }
 }
 
 impl MemoryMapped for Cpuint {
@@ -70,13 +61,13 @@ impl MemoryMapped for Cpuint {
 impl InterruptHandler for Cpuint {
     fn service_pending(&mut self) -> Option<u16> {
         // If we are currently servicing an interrupt, can't interrupt again
-        //TODO: Handle NMI and priorities correctly
+        // TODO: Handle NMI and priorities correctly
         if self.regs[CPUINT_STATUS] & 0x01 == 0 {
             for i in 0..self.sources.len() {
                 if self.sources[i].1.borrow_mut().interrupt(self.sources[i].2) {
                     // Set LVL0EX flag
                     self.regs[CPUINT_STATUS] |= 0x01;
-                    //TODO: Handle NMI and priorities correctly
+                    // TODO: Handle NMI and priorities correctly
                     return Option::Some(self.vectors[self.sources[i].0]);
                 }
             }

@@ -28,7 +28,6 @@ impl Stdio {
 
     fn out(&mut self, c: u8) {
         self.out.push(c);
-        //println!("[STDIO] Wrote 0x{:02X} ({})", c as u8, c);
     }
 
     pub fn out_close(&self) {
@@ -62,6 +61,6 @@ impl Hardware for Stdio {
     fn update(&mut self, _time: u64) {}
 
     fn event(&mut self, _time: u64, _event: &str) {
-        //TODO: Handle keystrokes
+        // TODO: Handle keystrokes
     }
 }

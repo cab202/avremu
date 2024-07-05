@@ -64,7 +64,6 @@ impl SinkUART {
 
     fn out(&mut self, c: u8) {
         self.out.push(c as char);
-        //println!("[STDIO] Wrote 0x{:02X} ({})", c as u8, c);
     }
 
     pub fn out_close(&self) {
@@ -77,7 +76,7 @@ impl SinkUART {
             let mut b = byte as u16;
             b |= 0x0100; // stop bit
             self.tx_reg = b;
-            self.tx_bit = 9; //start + 8N1
+            self.tx_bit = 9; // start + 8N1
             self.tx_state = UartState::Shift;
             self.tx_time = time + self.ns_per_bit;
             *self.pin_tx.borrow_mut() = PinState::DriveL;
@@ -96,7 +95,6 @@ impl Hardware for SinkUART {
         match self.rx_state {
             UartState::Idle => {
                 if rx_pinstate_new.eq(&RxState::Low) & self.rx_pinstate.eq(&RxState::High) {
-                    //println!("[VCP] Start bit detected.");
                     self.rx_state = UartState::Shift;
                     self.rx_bit = 9; // 8N1
                     self.rx_time = time + (self.ns_per_bit * 3 / 2);
@@ -106,14 +104,10 @@ impl Hardware for SinkUART {
                 if time >= self.rx_time {
                     self.rx_time += self.ns_per_bit;
                     if rx_pinstate_new.eq(&RxState::High) {
-                        //println!("[@{:08X}] VCP Rx, Bit {}: 1.", time, self.rx_bit);
                         self.rx_reg |= 1;
-                    } else {
-                        //println!("[@{:08X}] VCP Rx, Bit {}: 0.", time, self.rx_bit);
                     }
                     self.rx_bit -= 1;
                     if self.rx_bit == 0 {
-                        //println!("[@{:08X}] VCP Rx, Byte 0x{:02X}: 0.", time, ((self.rx_reg >> 1) as u8).reverse_bits());
                         self.rx_state = UartState::Check;
                     } else {
                         self.rx_reg <<= 1;
@@ -139,10 +133,8 @@ impl Hardware for SinkUART {
                     self.tx_time += self.ns_per_bit;
                     if (self.tx_reg & 1) == 1 {
                         *self.pin_tx.borrow_mut() = PinState::DriveH;
-                        //println!("[@{:08X}] VCP Tx, Bit {}: 1.", time, self.tx_bit);
                     } else {
                         *self.pin_tx.borrow_mut() = PinState::DriveL;
-                        //println!("[@{:08X}] VCP Tx, Bit {}: 0.", time, self.tx_bit);
                     }
                     self.tx_bit -= 1;
                     self.tx_reg >>= 1;

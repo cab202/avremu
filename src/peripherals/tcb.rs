@@ -202,7 +202,7 @@ impl Clocked for Tcb {
             }
 
             if let TCB_MODE::INT = self.cntmode {
-                //Increment counter
+                // Increment counter
                 let mut ovf;
                 (self.regs[TCB_CNTL], ovf) = self.regs[TCB_CNTL].overflowing_add(1);
                 if ovf {
@@ -212,7 +212,6 @@ impl Clocked for Tcb {
                 if (self.regs[TCB_CNTL] == self.regs[TCB_CCMPL])
                     & (self.regs[TCB_CNTH] == self.regs[TCB_CCMPH])
                 {
-                    //println!("[{}] TCB INTFLAGS.CAPT set @{:08X}", self.name, time);
                     self.regs[TCB_INTFLAGS] |= 0x01;
                     // Reset counter
                     // TODO: Is this correct or early by a cycle?
@@ -221,7 +220,6 @@ impl Clocked for Tcb {
                 }
                 // Overflow
                 if ovf {
-                    //println!("[{}] TCB INTFLAGS.OVF set @{:08X}", self.name, time);
                     self.regs[TCB_INTFLAGS] |= 0x02;
                 }
             }

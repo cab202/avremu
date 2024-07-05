@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::path::Path;
 
 use clap::Parser;
@@ -62,16 +61,12 @@ pub struct Cli {
 
 fn main() {
     let firmware = &CLI.firmware;
-    {
-        let file = File::open(Path::new(firmware));
-        match file {
-            Ok(..) => println!("[FIRMWARE] {}.", firmware),
-            Err(e) => {
-                println!("[FIRMWARE] Couldn't open {}. {}", firmware, e);
-                return;
-            }
-        }
-        // Drop file
+
+    if Path::new(firmware).exists() {
+        println!("[FIRMWARE] {}.", firmware);
+    } else {
+        println!("[FIRMWARE] Couldn't find {}.", firmware);
+        return;
     }
 
     let events = match &CLI.events {

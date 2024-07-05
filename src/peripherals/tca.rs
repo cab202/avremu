@@ -180,14 +180,14 @@ impl MemoryMapped for Tca {
                 self.regs[TCA_CTRLB] = value;
                 for i in 0..3 {
                     if ((value >> 4) & (1 << i)) == 0 {
-                        //WO disabled
+                        // WO disabled
                         if self.mux_alt[i] {
                             self.port.borrow_mut().po_out_clear(self.pins_alt[i]);
                         } else {
                             self.port.borrow_mut().po_out_clear(self.pins[i]);
                         }
                     } else {
-                        //WO enabled
+                        // WO enabled
                         let wo = (self.regs[TCA_CTRLC] & (1 << i)) != 0;
                         if self.mux_alt[i] {
                             self.port.borrow_mut().po_out(self.pins_alt[i], wo);
@@ -348,7 +348,7 @@ impl Clocked for Tca {
             }
             match self.cntmode {
                 TCA_MODE::SINGLESLOPE => {
-                    //Increment counter
+                    // Increment counter
                     if (self.regs[TCA_CNTL] == self.regs[TCA_PERL])
                         & (self.regs[TCA_CNTH] == self.regs[TCA_PERH])
                     {
@@ -384,11 +384,10 @@ impl Clocked for Tca {
                         self.regs[TCA_CTRLFCLR] &= 0xF0; // update event, clear BV bits
                     }
 
-                    //TOP
+                    // TOP
                     if (self.regs[TCA_CNTL] == self.regs[TCA_PERL])
                         & (self.regs[TCA_CNTH] == self.regs[TCA_PERH])
                     {
-                        //println!("[{}] TCA INTFLAGS.OVF set @{:08X}", self.name, time);
                         self.regs[TCA_INTFLAGS] |= 0x01;
                     }
 
@@ -398,7 +397,6 @@ impl Clocked for Tca {
                             & (self.regs[TCA_CNTH] == self.regs[TCA_CMP0H + (i << 1)])
                         {
                             self.regs[TCA_CTRLC] &= !(1 << i); // Clear WO
-                                                               //println!("[{}] TCA INTFLAGS.CMP{} set @{:08X}", self.name, i, time);
                             self.regs[TCA_INTFLAGS] |= 0x10 << i;
                         }
                     }
@@ -411,7 +409,7 @@ impl Clocked for Tca {
         // We update pins regardless of whether TCA is enabled
         for i in 0..3 {
             if (self.regs[TCA_CTRLB] & (0x10 << i)) != 0 {
-                //WO channel enabled
+                // WO channel enabled
                 let wo = (self.regs[TCA_CTRLC] & (1 << i)) != 0;
                 if self.mux_alt[i] {
                     self.port.borrow_mut().po_out(self.pins_alt[i], wo);

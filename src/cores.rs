@@ -93,18 +93,18 @@ impl Core {
 
     fn get_io_register(&self, register: u8) -> u8 {
         match register {
-            0x3F => self.sreg,              //CPU.SREG
-            0x3E => (self.sp >> 8) as u8,   //CPU.SPH
-            0x3D => (self.sp & 0xFF) as u8, //CPU.SPL
+            0x3F => self.sreg,              // CPU.SREG
+            0x3E => (self.sp >> 8) as u8,   // CPU.SPH
+            0x3D => (self.sp & 0xFF) as u8, // CPU.SPL
             _ => self.ds.borrow_mut().read(usize::from(register)).0,
         }
     }
 
     fn set_io_register(&mut self, register: u8, value: u8) {
         match register {
-            0x3F => self.sreg = value,                                    //CPU.SREG
-            0x3E => self.sp = (self.sp & 0x00FF) | ((value as u16) << 8), //CPU.SPH
-            0x3D => self.sp = (self.sp & 0xFF00) | (value as u16),        //CPU.SPL
+            0x3F => self.sreg = value,                                    // CPU.SREG
+            0x3E => self.sp = (self.sp & 0x00FF) | ((value as u16) << 8), // CPU.SPH
+            0x3D => self.sp = (self.sp & 0xFF00) | (value as u16),        // CPU.SPL
             _ => {
                 self.ds.borrow_mut().write(usize::from(register), value);
             }
@@ -113,9 +113,9 @@ impl Core {
 
     fn get_data_space(&self, address: u32) -> u8 {
         match address {
-            0x0000003F => self.sreg,              //CPU.SREG
-            0x0000003E => (self.sp >> 8) as u8,   //CPU.SPH
-            0x0000003D => (self.sp & 0xFF) as u8, //CPU.SPL
+            0x0000003F => self.sreg,              // CPU.SREG
+            0x0000003E => (self.sp >> 8) as u8,   // CPU.SPH
+            0x0000003D => (self.sp & 0xFF) as u8, // CPU.SPL
             _ => {
                 self.ds
                     .borrow_mut()
@@ -127,9 +127,9 @@ impl Core {
 
     fn set_data_space(&mut self, address: u32, value: u8) {
         match address {
-            0x0000003F => self.sreg = value, //CPU.SREG
-            0x0000003E => self.sp = (self.sp & 0x00FF) | ((value as u16) << 8), //CPU.SPH
-            0x0000003D => self.sp = (self.sp & 0xFF00) | (value as u16), //CPU.SPL
+            0x0000003F => self.sreg = value, // CPU.SREG
+            0x0000003E => self.sp = (self.sp & 0x00FF) | ((value as u16) << 8), // CPU.SPH
+            0x0000003D => self.sp = (self.sp & 0xFF00) | (value as u16), // CPU.SPL
             _ => {
                 self.ds
                     .borrow_mut()
@@ -1003,9 +1003,9 @@ impl Core {
     #[allow(non_snake_case)]
     fn cbi(&mut self, A: u8, b: u8) {
         match A {
-            0x3F => self.sreg &= !(1u8 << b),      //CPU.SREG
-            0x3D => self.sp &= !(1u16 << b),       //CPU.SPL
-            0x3E => self.sp &= !(1u16 << (b + 8)), //CPU.SPH
+            0x3F => self.sreg &= !(1u8 << b),      // CPU.SREG
+            0x3D => self.sp &= !(1u16 << b),       // CPU.SPL
+            0x3E => self.sp &= !(1u16 << (b + 8)), // CPU.SPH
             _ => {
                 self.ds.borrow_mut().set_bit(usize::from(A), b, false);
             }
@@ -1082,9 +1082,9 @@ impl Core {
     #[allow(non_snake_case)]
     fn sbi(&mut self, A: u8, b: u8) {
         match A {
-            0x3F => self.sreg |= 1u8 << b,      //CPU.SREG
-            0x3D => self.sp |= 1u16 << b,       //CPU.SPL
-            0x3E => self.sp |= 1u16 << (b + 8), //CPU.SPH
+            0x3F => self.sreg |= 1u8 << b,      // CPU.SREG
+            0x3D => self.sp |= 1u16 << b,       // CPU.SPL
+            0x3E => self.sp |= 1u16 << (b + 8), // CPU.SPH
             _ => {
                 self.ds.borrow_mut().set_bit(usize::from(A), b, true);
             }
@@ -1113,7 +1113,10 @@ impl Core {
         }
 
         if (address as u32) + (q as u32) < 64 {
-            self.set_register(d, self.get_io_register(((address as u32) + (q as u32)) as u8));
+            self.set_register(
+                d,
+                self.get_io_register(((address as u32) + (q as u32)) as u8),
+            );
         } else {
             self.set_register(d, self.get_data_space((address as u32) + (q as u32)));
         }

@@ -141,7 +141,7 @@ impl MemoryMapped for Usart {
     fn read(&mut self, address: usize) -> (u8, usize) {
         match address {
             USART_RXDATAL => {
-                //This logic only works for < 9 bit frames
+                // This logic only works for < 9 bit frames
                 if !self.rx_buf.is_empty() {
                     let data = self.rx_buf.pop_front().unwrap();
                     self.regs[USART_RXDATAL] = data as u8;
@@ -155,7 +155,7 @@ impl MemoryMapped for Usart {
                 (self.regs[USART_RXDATAL], 0)
             }
             USART_RXDATAH => {
-                //This logic only works for < 9 bit frames
+                // This logic only works for < 9 bit frames
                 if !self.rx_buf.is_empty() {
                     let data = self.rx_buf.front().unwrap();
                     self.regs[USART_RXDATAH] &= 0xC0;
@@ -170,9 +170,8 @@ impl MemoryMapped for Usart {
 
     fn write(&mut self, address: usize, value: u8) -> usize {
         match address {
-            //RXDATA is read only
+            // RXDATA is read only
             USART_TXDATAL => {
-                //println!("[USART] TXDATAH: 0x{:02X}", value);
                 if self.dre() {
                     if self.tx_state.eq(&UsartState::Idle) {
                         // start bit
@@ -181,7 +180,7 @@ impl MemoryMapped for Usart {
                         } else {
                             self.port.borrow_mut().po_out(self.pins[1], false);
                         }
-                        self.tx_bit = 9; //check??
+                        self.tx_bit = 9; // check??
                         self.tx_reg = (value as u16) | 0x0100; // Add stop bit
                         self.tx_accum = 0;
                         self.tx_state = UsartState::Shift;
@@ -213,7 +212,7 @@ impl MemoryMapped for Usart {
             }
             USART_CTRLB => {
                 self.regs[USART_CTRLB] = value;
-                //TODO: This won't behave properly if mux is changed after config
+                // TODO: This won't behave properly if mux is changed after config
                 if self.txen() {
                     if self.mux_alt {
                         self.port_alt.borrow_mut().po_out(self.pins_alt[1], true);
@@ -347,7 +346,6 @@ impl Clocked for Usart {
                                 .borrow_mut()
                                 .po_out(self.pins[1], (self.tx_reg & 1) == 1);
                         }
-                        //println!("[@{:08X}] USART Tx, Bit {}: {:}", time, self.tx_bit, self.tx_reg & 1);
                         self.tx_reg >>= 1;
                         self.tx_bit -= 1;
                         if self.tx_bit == 0 {

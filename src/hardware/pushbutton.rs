@@ -13,7 +13,6 @@ enum PushbuttonState {
 pub struct Pushbutton {
     name: String,
     pin: Rc<RefCell<PinState>>,
-    //net: Rc<RefCell<Net>>,
     state: PushbuttonState,
     active_high: bool,
 }
@@ -23,7 +22,7 @@ impl Pushbutton {
         let pb = Pushbutton {
             name,
             pin: Rc::new(RefCell::new(PinState::Open)),
-            //net,
+            // net,
             state: PushbuttonState::Released,
             active_high,
         };
@@ -56,7 +55,7 @@ impl Pushbutton {
 
 impl Hardware for Pushbutton {
     fn update(&mut self, _time: u64) {
-        //TODO: Add code for bounce
+        // TODO: Add code for bounce
     }
 
     fn event(&mut self, time: u64, event: &str) {
@@ -66,8 +65,4 @@ impl Hardware for Pushbutton {
             self.release(time);
         }
     }
-
-    //fn get_pin(&self, _name: String) -> Weak<RefCell<PinState>> {
-    //    Rc::downgrade(&self.pin)
-    //}
 }

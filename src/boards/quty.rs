@@ -311,7 +311,7 @@ impl QUTy {
     }
 
     pub fn step(&mut self) -> u64 {
-        //let timestep = 300; // Default 300 ns => 3.3 MHz
+        // let timestep = 300; // Default 300 ns => 3.3 MHz
 
         if !self.events.is_empty() {
             while self.time >= self.events[0].time {

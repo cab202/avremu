@@ -138,7 +138,7 @@ impl Display {
         let lhs;
         let rhs;
         if lhs_first {
-            //LHS first
+            // LHS first
             lhs = self.state.front().unwrap();
             rhs = self.state.get(1).unwrap();
         } else {
@@ -170,7 +170,7 @@ impl Display {
     fn decode_1d(&self) -> String {
         let on_first = (self.state.front().unwrap().0 & 0x7F) != 0x7F;
         let on = if on_first {
-            //LHS first
+            // LHS first
             self.state.front().unwrap()
         } else {
             self.state.get(1).unwrap()
@@ -205,13 +205,13 @@ impl Display {
 impl Hardware for Display {
     fn update(&mut self, time: u64) {
         self.enabled = self.net_en.borrow().state.eq(&NetState::High);
-        //println!("DISP: Enable is {}", self.enabled);
+        // println!("DISP: Enable is {}", self.enabled);
         let state = self.state.front().unwrap().0;
         let mut state_new = 0x7F;
         if self.enabled {
             for i in 0..7 {
                 if self.nets_segs[i].borrow().state.eq(&NetState::Low) {
-                    //println!("DISP: Seg {} is low.", i);
+                    // println!("DISP: Seg {} is low.", i);
                     state_new &= !(1 << i)
                 }
             }
@@ -233,7 +233,7 @@ impl Hardware for Display {
 
             let valid_2d_cycle = (self.state.front().unwrap().0 == self.state.back().unwrap().0)
                 & (((self.state.front().unwrap().0 ^ self.state.get(1).unwrap().0) & 0x80) == 0x80);
-            //println!("[DISP] Front: {:02X}, Back: {:02X}", self.state.front().unwrap().0, self.state.back().unwrap().0);
+            // println!("[DISP] Front: {:02X}, Back: {:02X}", self.state.front().unwrap().0, self.state.back().unwrap().0);
             let valid_1d_cycle = (self.state.front().unwrap().0 == self.state.back().unwrap().0)
                 & ((self.state.front().unwrap().0 & 0x7F == 0x7F)
                     | (self.state.get(1).unwrap().0 & 0x7F == 0x7F))
@@ -260,6 +260,6 @@ impl Hardware for Display {
             }
         }
 
-        //println!("DISP: State {} => {}", self.state, state_new);
+        // println!("DISP: State {} => {}", self.state, state_new);
     }
 }

@@ -65,8 +65,4 @@ impl Hardware for Led {
             self.state = new_state;
         }
     }
-
-    //fn get_pin(&self, _name: String) -> Weak<RefCell<PinState>> {
-    //    Rc::downgrade(&self.pin)
-    //}
 }

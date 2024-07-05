@@ -37,10 +37,6 @@ impl Event {
             });
         }
 
-        //for e in &events {
-        //    println!("{} {}: {} ({} {})", e.time, e.device, e.event, e.device.len(), e.event.len());
-        //}
-
         events
     }
 }

@@ -96,11 +96,7 @@ impl Hardware for SinkPwm {
                         }
                         self.desc = desc_new;
                     }
-                    /*
-                    if self.cycle_valid & (f > 20.0) & (f < 20000.0) {
-                        println!("[@{:012X}] PWM|{}: {:.1} Hz, {:.1} % duty cycle", time, self.name, f, duty);
-                    }
-                    */
+
                     self.t_rise_last = time;
                     if !self.cycle_valid {
                         self.cycle_valid = true;

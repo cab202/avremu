@@ -23,7 +23,6 @@ pub enum NetState {
     Analog(f32),
 }
 
-#[allow(dead_code)]
 pub struct Net {
     pub state: NetState,
     io: Vec<Weak<RefCell<PinState>>>,
@@ -46,11 +45,7 @@ impl Net {
     pub fn update(&mut self, time: u64) {
         let mut dps = PinState::Open;
 
-        //println!("Updating net...");
-
         for ps in &self.io {
-            //println!("Pinstate is {:?}", *ps.upgrade().unwrap().borrow());
-
             match *ps.upgrade().unwrap().borrow() {
                 PinState::Open => {}
                 PinState::WeakPullDown => {
@@ -104,8 +99,6 @@ impl Net {
                 }
                 PinState::UndefinedStrong => break, // We shouldn't ever get here
             }
-
-            //println!("New dominant pinstate is {:?}", dps);
         }
 
         let state_new = match dps {

@@ -18,11 +18,6 @@ pub struct IC74HC595 {
     name: String,
     pins_out: [Rc<RefCell<PinState>>; 8],
     pin_q7s: Rc<RefCell<PinState>>,
-    //pin_stcp: Rc<RefCell<PinState>>,
-    //pin_ds: Rc<RefCell<PinState>>,
-    //pin_shcp: Rc<RefCell<PinState>>,
-    //pin_oe_n: Rc<RefCell<PinState>>,
-    //pin_mr_n: Rc<RefCell<PinState>>,
     nets_out: [Rc<RefCell<Net>>; 8],
     net_stcp: Rc<RefCell<Net>>,
     net_ds: Rc<RefCell<Net>>,
@@ -50,11 +45,6 @@ impl IC74HC595 {
                 Rc::new(RefCell::new(PinState::Open)),
             ],
             pin_q7s: Rc::new(RefCell::new(PinState::Open)),
-            //pin_stcp: Rc::new(RefCell::new(PinState::Open)),
-            //pin_shcp: Rc::new(RefCell::new(PinState::Open)),
-            //pin_ds: Rc::new(RefCell::new(PinState::Open)),
-            //pin_oe_n: Rc::new(RefCell::new(PinState::Open)),
-            //pin_mr_n: Rc::new(RefCell::new(PinState::Open)),
             nets_out: [
                 Rc::new(RefCell::new(Net::new("".to_string()))),
                 Rc::new(RefCell::new(Net::new("".to_string()))),
@@ -103,32 +93,26 @@ impl Hardware for IC74HC595 {
             NetState::Low => ClockState::Low,
             _ => ClockState::Undefined,
         };
-        //println!("SR: SHCP is {:?}", state_shcp_new);
         let state_stcp_new = match self.net_stcp.borrow().state {
             NetState::High => ClockState::High,
             NetState::Low => ClockState::Low,
             _ => ClockState::Undefined,
         };
-        //println!("SR: STCP is {:?}", state_stcp_new);
         if self.net_mr_n.borrow().state.eq(&NetState::Low) {
-            //println!("SR: Mater reset");
             *self.pin_q7s.borrow_mut() = PinState::DriveL;
             self.reg_shift = 0;
             if state_stcp_new.eq(&ClockState::High) & self.state_stcp.eq(&ClockState::Low) {
-                //Rising edge store clock
-                //println!("SR: Rising edge store clock");
+                // Rising edge store clock
                 self.reg_latch = 0;
             }
         } else {
             // On simultaneous clock rising edges store takes pre-shift values
             if state_stcp_new.eq(&ClockState::High) & self.state_stcp.eq(&ClockState::Low) {
-                //Rising edge store clock
-                //println!("SR: Rising edge store clock");
+                // Rising edge store clock
                 self.reg_latch = self.reg_shift;
             }
             if state_shcp_new.eq(&ClockState::High) & self.state_shcp.eq(&ClockState::Low) {
-                //Rising edge shift clock
-                //println!("SR: Rising edge shift clock");
+                // Rising edge shift clock
                 *self.pin_q7s.borrow_mut() = if self.reg_shift.view_bits::<Lsb0>()[6] {
                     PinState::DriveH
                 } else {
@@ -144,7 +128,6 @@ impl Hardware for IC74HC595 {
         }
 
         if self.net_oe_n.borrow().state.eq(&NetState::Low) {
-            //println!("SR: Output enabled");
             for i in 0..8 {
                 *self.pins_out[i].borrow_mut() = if self.reg_latch.view_bits::<Lsb0>()[i] {
                     PinState::DriveH

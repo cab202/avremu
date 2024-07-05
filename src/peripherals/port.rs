@@ -63,9 +63,9 @@ struct PortIO {
     po_out: bool,
     po_out_val: bool,
     po_dir: bool,
-    po_dir_val: bool, //interrupt sink
-                      //analog sink
-                      //pin state
+    po_dir_val: bool, // interrupt sink
+                      // analog sink
+                      // pin state
 }
 
 impl PortIO {
@@ -209,7 +209,7 @@ impl MemoryMapped for Port {
         match address {
             PORT_DIR..=PORT_DIRTGL => (self.regs[PORT_DIR], 0),
             PORT_OUT..=PORT_OUTTGL => (self.regs[PORT_OUT], 0),
-            PORT_IN => (self.regs[PORT_IN], 0), //TODO: update reg value on pin status change
+            PORT_IN => (self.regs[PORT_IN], 0), // TODO: update reg value on pin status change
             PORT_INTFLAGS => (self.regs[PORT_INTFLAGS], 0),
             PORT_PORTCTRL => (self.regs[PORT_PORTCTRL] & 0x01, 0),
             PORT_PIN0CTRL..=PORT_PIN7CTRL => (self.regs[address] & 0x8F, 0),
@@ -285,7 +285,7 @@ impl Hardware for Port {
                     }
                     self.regs[PORT_IN] &= !(1u8 << i)
                 }
-                _ => {} //do nothing if undefined
+                _ => {} // do nothing if undefined
             }
         }
     }
